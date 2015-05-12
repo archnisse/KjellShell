@@ -1,2 +1,2 @@
 # OS
-The operating system lab
+The operating system lab, in the course DD2200
