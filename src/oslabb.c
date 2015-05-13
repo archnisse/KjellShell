@@ -14,6 +14,7 @@
 #include <string.h>
 #include <sys/wait.h> /* included to make the WUNTRACES stuff work */
 #include <sys/types.h> /* pid_t */
+#include <signal.h>
 
 #define TRUE 1
 #define BUFFERSIZE 80 /* */
@@ -39,7 +40,7 @@ int main(void)
             break;
         printf("%s\n",argvs[i]);
     }
-    interpret(buffer);
+    interpret(argvs);
 /*    char* arg[] = {"ls", "-la", NULL};
     execvp(arg[0], arg);*/
     forker(buffer);
@@ -77,8 +78,9 @@ void read_command(char argvs[(BUFFERSIZE/2) + 1][BUFFERSIZE], char buffer[BUFFER
 
 void interpret(char argvs[(BUFFERSIZE/2) + 1][BUFFERSIZE])
 {
-    if (strcomp("exit",argvs[0]))
+    if (strcmp("exit", argvs[0]))
     {
+        printf("Ahw yeah");
         kill(-1, SIGTERM);
     }
 }
