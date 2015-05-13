@@ -20,7 +20,6 @@
 #define TRUE 1
 #define BUFFERSIZE 80 /* */
 
-void interpret(char [(BUFFERSIZE/2) + 1][BUFFERSIZE]);
 
 /*
  * Function:    read_command
@@ -137,9 +136,19 @@ int interpret(char* args[BUFFERSIZE])
 
 int main(void) {
     char* args[BUFFERSIZE];
+    int i;
     while(TRUE) {
         prompt();
         read_command(args);
+        fprintf(stderr, "These are stuffs:\n");
+        for (i = 0; i < BUFFERSIZE; i++) {
+            if (args[i][0] == 0) {
+                break;
+            }
+            fprintf(stderr, "%s\n", args[i]);
+        }
+        /* interpret if there are any system commands */
+        interpret(args);
         /* print_buffer(args); */
         forker(args);
     }
