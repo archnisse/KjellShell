@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <wait.h> /* included to make the WUNTRACES stuff work */
 
 #define TRUE 1
 #define BUFFERSIZE 80 /* */
@@ -31,7 +32,7 @@ int main(void) {
     prompt();
     read_command(argvs, buffer);
     for(i = 0; i < (BUFFERSIZE/2) +1; i++) {
-        if (argvs[i][0] == NULL)
+        if (argvs[i][0] == '\0')
             break;
         printf("%s\n",argvs[i]);
     }
@@ -62,18 +63,19 @@ void read_command(char argvs[(BUFFERSIZE/2) + 1][BUFFERSIZE], char* buffer) {
         }
         if (buffer[i] == '\0') {
             listIndex++;
-            argvs[listIndex][0] = NULL;
+            argvs[listIndex][0] = '\0';
             break;
         }
     }
-    argvs[(BUFFERSIZE/2) + 1][0] = NULL;
+    argvs[(BUFFERSIZE/2) + 1][0] = '\0';
     return;
 }
 
 
 
 void forker(char* buffer) {
-    pid_t childPid;
+    int childPid;
+    /*pid_t childPid;*/
     int childStatus;
     int fileDescriptor[2];
     char *const argvs;
