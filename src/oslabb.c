@@ -12,8 +12,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <wait.h> /* included to make the WUNTRACES stuff work */
-#include <types.h> /* pid_t */
+#include <sys/wait.h> /* included to make the WUNTRACES stuff work */
+#include <sys/types.h> /* pid_t */
 
 #define TRUE 1
 #define BUFFERSIZE 80 /* */
