@@ -20,6 +20,8 @@
 #define TRUE 1
 #define BUFFERSIZE 80 /* */
 
+static const char SHELL_NAME[] = "Kjell Shell";
+
 
 /*
  * Function:    read_command
@@ -41,6 +43,11 @@ void read_command(char* args[BUFFERSIZE]) {
 
     /* Read from STDIN to buffer */
     fgets(buffer, BUFFERSIZE, stdin);
+
+    /* Empty args */
+    for(i = 0; i < BUFFERSIZE; i++) {
+        args[i] = 0;
+    }
 
     /* Split buffer into words in args */
     args[0] = &buffer[0];
@@ -89,7 +96,7 @@ void forker(char* const* args) {
         childErrno = execvp(args[0], args);
 
         if(errno == 2) {
-            printf("command not found\n");
+            printf("%s: command not found\n", SHELL_NAME);
         }
     } else {
         printf("Couldn't fork");
@@ -121,7 +128,6 @@ void prompt() {
  */
 int interpret(char* args[BUFFERSIZE])
 {
-    fprintf(stderr, "i interpret\n");
     if (!strcmp("exit", args[0]))
     {
         fprintf(stderr, "exiting\n");
