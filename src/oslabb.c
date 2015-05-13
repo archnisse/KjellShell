@@ -20,7 +20,6 @@
 #define TRUE 1
 #define BUFFERSIZE 80 /* */
 
-void interpret(char [(BUFFERSIZE/2) + 1][BUFFERSIZE]);
 
 /*
  * Function:    read_command
@@ -112,20 +111,43 @@ void prompt() {
     return;
 }
 
-void interpret(char argvs[(BUFFERSIZE/2) + 1][BUFFERSIZE])
+/*
+ * Function:    interpret
+ * -------------------
+ * Looks for system commands in the input
+ *
+ * input: char* args[buffersize] containing the user input
+ * returns: 1 if it matched a system command (?), 0 if not
+ */
+int interpret(char* args[BUFFERSIZE])
 {
-    if (strcmp("exit", argvs[0]))
+    fprintf(stderr, "i interpret\n");
+    if (!strcmp("exit", args[0]))
     {
-        printf("Ahw yeah");
-        kill(-1, SIGTERM);
+        fprintf(stderr, "exiting\n");
+        kill(0, SIGTERM);
+        return 1;
     }
+    if (!strcmp("cd", args[0]))
+    {
+        fprintf(stderr, "chaning directory\n");
+        fprintf(stderr, "to: %s\n", args[1]);
+        chdir(args[1]);
+        return 1;
+    }
+    return 0;
 }
 
 int main(void) {
     char* args[BUFFERSIZE];
+    int i;
     while(TRUE) {
         prompt();
         read_command(args);
+        print_buffer(args);
+        /* interpret if there are any system commands */
+        if (interpret(args))
+            continue;
         /* print_buffer(args); */
         forker(args);
     }
