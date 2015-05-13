@@ -121,6 +121,7 @@ void prompt() {
  */
 int interpret(char* args[BUFFERSIZE])
 {
+    fprintf(stderr, "i interpret");
     if (!strcmp("exit", args[0]))
     {
         fprintf(stderr, "exiting\n");
@@ -140,15 +141,10 @@ int main(void) {
     while(TRUE) {
         prompt();
         read_command(args);
-        fprintf(stderr, "These are stuffs:\n");
-        for (i = 0; i < BUFFERSIZE; i++) {
-            if (args[i][0] == 0) {
-                break;
-            }
-            fprintf(stderr, "%s\n", args[i]);
-        }
+        print_buffer(args);
         /* interpret if there are any system commands */
-        interpret(args);
+        if (interpret(args))
+            continue;
         /* print_buffer(args); */
         forker(args);
     }
