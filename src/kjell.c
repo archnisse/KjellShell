@@ -131,7 +131,8 @@ int interpret(char* args[BUFFERSIZE])
     if (!strcmp("exit", args[0]))
     {
         fprintf(stderr, "exiting\n");
-        kill(0, SIGTERM);
+
+        kill(getpid(), SIGTERM);
         return 1;
     }
     if (!strcmp("cd", args[0]))
