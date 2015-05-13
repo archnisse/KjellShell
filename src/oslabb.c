@@ -121,18 +121,21 @@ void prompt() {
  */
 int interpret(char* args[BUFFERSIZE])
 {
-    fprintf(stderr, "i interpret");
+    fprintf(stderr, "i interpret\n");
     if (!strcmp("exit", args[0]))
     {
         fprintf(stderr, "exiting\n");
         kill(0, SIGTERM);
+        return 1;
     }
     if (!strcmp("cd", args[0]))
     {
         fprintf(stderr, "chaning directory\n");
         fprintf(stderr, "to: %s\n", args[1]);
         chdir(args[1]);
+        return 1;
     }
+    return 0;
 }
 
 int main(void) {
