@@ -75,8 +75,8 @@ void read_command(char argvs[(BUFFERSIZE/2) + 1][BUFFERSIZE], char buffer[BUFFER
 
 
 void forker(char* buffer) {
-    int childPid;
-    /*pid_t childPid;*/
+    /*int childPid;*/
+    pid_t childPid;
     int childStatus;
     int fileDescriptor[2];
     char *const argvs;
