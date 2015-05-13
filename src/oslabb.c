@@ -38,8 +38,8 @@ int main(void) {
     }
 
 /*    char* arg[] = {"ls", "-la", NULL};
-    execvp(arg[0], arg);
-    /*forker(buffer);*/
+    execvp(arg[0], arg);*/
+    forker(buffer);
 	return EXIT_SUCCESS;
 }
 
@@ -48,7 +48,7 @@ void prompt() {
     return;
 }
 
-void read_command(char argvs[(BUFFERSIZE/2) + 1][BUFFERSIZE], char* buffer) {
+void read_command(char argvs[(BUFFERSIZE/2) + 1][BUFFERSIZE], char buffer[BUFFERSIZE]) {
     int i, wordIndex, listIndex;
     fgets(buffer, BUFFERSIZE, stdin);
     wordIndex = 0;
@@ -61,13 +61,14 @@ void read_command(char argvs[(BUFFERSIZE/2) + 1][BUFFERSIZE], char* buffer) {
             wordIndex = 0;
             listIndex++;
         }
-        if (buffer[i] == '\0') {
+        if (buffer[i] == '\0' || buffer[i] == '\n') {
             listIndex++;
+            buffer[i] = '\0';
             argvs[listIndex][0] = '\0';
             break;
         }
     }
-    argvs[(BUFFERSIZE/2) + 1][0] = '\0';
+    argvs[(BUFFERSIZE/2)][0] = '\0';
     return;
 }
 
@@ -79,6 +80,7 @@ void forker(char* buffer) {
     int childStatus;
     int fileDescriptor[2];
     char *const argvs;
+    char child_buffer[BUFFERSIZE];
     pipe(fileDescriptor);
 
     childStatus = 0;
@@ -88,17 +90,23 @@ void forker(char* buffer) {
         /* Successful fork */
         if(childPid == 0) {
             /* Child! */
-            close(STDOUT_FILENO);
-            dup2(fileDescriptor[1], STDOUT_FILENO);
+            printf("Child.\n");
+            /*close(STDOUT_FILENO);*/
+            dup2(fileDescriptor[0], STDIN_FILENO);
+            read(fileDescriptor[0], child_buffer, BUFFERSIZE);
             close(fileDescriptor[0]);
-            close(fileDescriptor[1]);
-
-            execvp(buffer, &argvs);
+            /*close(fileDescriptor[1]);*/
+            printf("Child got this: %s\n", child_buffer);
+            execvp(child_buffer, &argvs);
         } else {
             /* Write command to child */
-
+            printf("Parent\n");
+            dup2(fileDescriptor[1], STDOUT_FILENO);
+            write(fileDescriptor[1], buffer, BUFFERSIZE);
+            /*close(fileDescriptor[0]);*/
+            close(fileDescriptor[1]);
             waitpid(childPid, &childStatus, WUNTRACED|WCONTINUED);
-            printf("%i", childStatus);
+            printf("childstatus: %i\n", childStatus);
         }
     } else {
         /* Fork failed */
