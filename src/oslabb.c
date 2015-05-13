@@ -15,6 +15,7 @@
 #include <sys/wait.h> /* included to make the WUNTRACES stuff work */
 #include <sys/types.h> /* pid_t */
 #include <signal.h>
+#include <errno.h>
 
 #define TRUE 1
 #define BUFFERSIZE 80 /* */
@@ -78,18 +79,21 @@ void read_command(char* args[BUFFERSIZE]) {
 void forker(char* const* args) {
     pid_t childPid;
     int childStatus;
+    int childErrno;
     int fileDescriptor[2];
     pipe(fileDescriptor);
-
     childPid = fork();
-    printf("My PID is: %i\n", childPid);
 
     if(childPid > 0) {
-        printf("\n"); /* Without this line nothing prints from the child */
         waitpid(childPid, &childStatus, 0);
     } else if(childPid == 0) {
-        printf("\n"); /* Without this line nothing prints from the child */
-        execvp(args[0], args);
+        childErrno = execvp(args[0], args);
+
+        if(errno == 2) {
+            printf("command not found\n");
+        }
+    } else {
+        printf("Couldn't fork");
     }
 }
 
@@ -119,10 +123,12 @@ void interpret(char argvs[(BUFFERSIZE/2) + 1][BUFFERSIZE])
 
 int main(void) {
     char* args[BUFFERSIZE];
-    prompt();
-    read_command(args);
-    /* print_buffer(args); */
-    forker(args);
+    while(TRUE) {
+        prompt();
+        read_command(args);
+        /* print_buffer(args); */
+        forker(args);
+    }
 
 	return EXIT_SUCCESS;
 }
