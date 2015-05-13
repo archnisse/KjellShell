@@ -112,12 +112,26 @@ void prompt() {
     return;
 }
 
-void interpret(char argvs[(BUFFERSIZE/2) + 1][BUFFERSIZE])
+/*
+ * Function:    interpret
+ * -------------------
+ * Looks for system commands in the input
+ *
+ * input: char* args[buffersize] containing the user input
+ * returns: 1 if it matched a system command (?), 0 if not
+ */
+int interpret(char* args[BUFFERSIZE])
 {
-    if (strcmp("exit", argvs[0]))
+    if (!strcmp("exit", args[0]))
     {
-        printf("Ahw yeah");
-        kill(-1, SIGTERM);
+        fprintf(stderr, "exiting\n");
+        kill(0, SIGTERM);
+    }
+    if (!strcmp("cd", args[0]))
+    {
+        fprintf(stderr, "chaning directory\n");
+        fprintf(stderr, "to: %s\n", args[1]);
+        chdir(args[1]);
     }
 }
 
