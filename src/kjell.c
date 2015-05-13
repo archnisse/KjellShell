@@ -17,6 +17,12 @@
 #include <signal.h>
 #include <errno.h>
 
+
+#include <stdio.h>
+
+#define ANSI_GREEN "\x1b[0;32m"
+#define ANSI_RESET "\x1b[0;0m"
+
 #define TRUE 1
 #define BUFFERSIZE 80 /* */
 
@@ -114,7 +120,9 @@ void print_buffer(char ** args) {
 }
 
 void prompt() {
-    printf("> ");
+    char hostname[256], username[256];
+    gethostname(hostname, 256);
+    printf("%s@%s %s\xE2\x9E\xA1 %s", getenv("LOGNAME"), hostname, ANSI_GREEN, ANSI_RESET);
     return;
 }
 
@@ -130,15 +138,15 @@ int interpret(char* args[BUFFERSIZE])
 {
     if (!strcmp("exit", args[0]))
     {
-        fprintf(stderr, "exiting\n");
+        /* fprintf(stderr, "exiting\n"); */
 
         kill(getpid(), SIGTERM);
         return 1;
     }
     if (!strcmp("cd", args[0]))
     {
-        fprintf(stderr, "chaning directory\n");
-        fprintf(stderr, "to: %s\n", args[1]);
+        /* fprintf(stderr, "changing directory\n");
+        fprintf(stderr, "to: %s\n", args[1]); */
         chdir(args[1]);
         return 1;
     }
@@ -151,7 +159,7 @@ int main(void) {
     while(TRUE) {
         prompt();
         read_command(args);
-        print_buffer(args);
+        /* print_buffer(args); */
         /* interpret if there are any system commands */
         if (interpret(args))
             continue;
