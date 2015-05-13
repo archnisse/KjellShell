@@ -1,10 +1,10 @@
 /*
  ============================================================================
- Name        : oslabb.c
+ Name        : Kjell.c
  Author      : 
  Version     :
  Copyright   : Your copyright notice
- Description : Hello World in C, Ansi-style
+ Description : Kjell the Shell. A C linux Shell.
  ============================================================================
  */
 
