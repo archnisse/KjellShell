@@ -107,6 +107,7 @@ void forker(char* buffer) {
             /*close(fileDescriptor[0]);*/
             close(fileDescriptor[1]);
             waitpid(childPid, &childStatus, WUNTRACED|WCONTINUED);
+            /* TODO: Den är printen kommer den aldrig till. varför? Vad händer i child?*/
             printf("childstatus: %i\n", childStatus);
         }
     } else {
