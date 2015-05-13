@@ -20,8 +20,10 @@
 void prompt();
 void read_command(char [(BUFFERSIZE/2) + 1][BUFFERSIZE], char*);
 void forker(char*);
+void interpret(char [(BUFFERSIZE/2) + 1][BUFFERSIZE]);
 
-int main(void) {
+int main(void)
+{
     char buffer[BUFFERSIZE];
     char argvs[(BUFFERSIZE/2) + 1][BUFFERSIZE];
     int i;
@@ -37,7 +39,7 @@ int main(void) {
             break;
         printf("%s\n",argvs[i]);
     }
-
+    interpret(buffer);
 /*    char* arg[] = {"ls", "-la", NULL};
     execvp(arg[0], arg);*/
     forker(buffer);
@@ -73,7 +75,13 @@ void read_command(char argvs[(BUFFERSIZE/2) + 1][BUFFERSIZE], char buffer[BUFFER
     return;
 }
 
-
+void interpret(char argvs[(BUFFERSIZE/2) + 1][BUFFERSIZE])
+{
+    if (strcomp("exit",argvs[0]))
+    {
+        kill(-1, SIGTERM);
+    }
+}
 
 void forker(char* buffer) {
     /*int childPid;*/
