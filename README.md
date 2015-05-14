@@ -1,4 +1,4 @@
-# Kjell the Shell (KtS)
+# Kjell Shell (KS)
 
 A simple C-shell for Linux / OS X. Made for operating system lab, in the course DD2200.
 
