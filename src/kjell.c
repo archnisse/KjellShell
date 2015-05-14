@@ -77,9 +77,9 @@ int read_command(char* args[BUFFERSIZE]) {
         /* If current character is a space */
         if(buffer[i] == '"' && insideQuote == 1) { insideQuote = 0; }
         else if(buffer[i] == '"' && !insideQuote) { insideQuote = 1; }
-/*        if(buffer[i] == '\'' && !insideQuote) { insideQuote = 2; }
-        if(buffer[i] == '\'' && insideQuote == 2) { insideQuote = 0; }
-*/
+        else if(buffer[i] == '\'' && !insideQuote) { insideQuote = 2; }
+        else if(buffer[i] == '\'' && insideQuote == 2) { insideQuote = 0; }
+
         if (buffer[i] == ' ' && !insideQuote) {
             /* Set the argument to point at the next character in buffer */
             /* -only- if there is no double space */
