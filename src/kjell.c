@@ -16,9 +16,11 @@
 #include <sys/types.h> /* pid_t */
 #include <signal.h>
 #include <errno.h>
-
-
 #include <stdio.h>
+
+#define _XOPEN_SOURCE 500
+#include <unistd.h>
+
 
 #define ANSI_GREEN "\x1b[0;32m"
 #define ANSI_RESET "\x1b[0;0m"
@@ -44,15 +46,16 @@ static const char SHELL_NAME[] = "Kjell Shell";
  */
 void read_command(char* args[BUFFERSIZE]) {
     char buffer[BUFFERSIZE];
-    int i, listIndex;
+    int i, listIndex, kill;
     listIndex = 1;
+    kill = 0;
 
     /* Read from STDIN to buffer */
     fgets(buffer, BUFFERSIZE, stdin);
 
     /* Empty args */
     for(i = 0; i < BUFFERSIZE; i++) {
-        args[i] = 0;
+        args[i] = '\0';
     }
 
     /* Split buffer into words in args */
@@ -73,12 +76,38 @@ void read_command(char* args[BUFFERSIZE]) {
         }
 
         /* If we encounter newline */
-        if (buffer[i] == '\n') {
+        if (buffer[i] == '\n' || buffer[i] == '\r' || kill) {
             /* Just null it */
             buffer[i] = 0;
-            break;
+            kill = 1;
         }
+	printf("%c", buffer[i]);
     }
+    buffer[i] = 0;
+
+    return;
+}
+
+void read_command2(char* args[BUFFERSIZE]) {
+    char buffer[BUFFERSIZE];
+    int c = 0;
+    int i = 0;
+    /* Read input from stdin */
+    fgets(buffer, BUFFERSIZE, stdin);
+    /* Tokenize it */
+    args[i] = strtok(buffer, " ");
+    while(args[i]) {
+        i++;
+        args[i] = strtok(NULL, " ");
+    }
+
+    /* Remove newline */
+    while(args[i-1][c] != NULL) { 
+        printf("%c", args[i-1][c]);
+	c++; 
+    }
+    args[i-1][c-1] = 0;
+    args[i] = 0;
 
     return;
 }
@@ -93,8 +122,7 @@ void read_command(char* args[BUFFERSIZE]) {
  */
 void forker(char* const* args) {
     pid_t childPid;
-    int childStatus;
-    int childErrno;
+    int childStatus, childErrno;
     int fileDescriptor[2];
     pipe(fileDescriptor);
     childPid = fork();
@@ -104,7 +132,7 @@ void forker(char* const* args) {
     } else if(childPid == 0) {
         childErrno = execvp(args[0], args);
 
-        if(errno == 2) {
+        if(childErrno == -1 && errno == 2) {
             printf("%s: command not found: %s\n", SHELL_NAME, "--cmd entered--");
         }
     } else {
@@ -241,7 +269,7 @@ int main(void) {
     int i;
     while(TRUE) {
         prompt();
-        read_command(args);
+        read_command2(args);
 
         /* check if there are any system commands */
         if (system_commands(args))
