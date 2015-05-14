@@ -56,7 +56,7 @@ void read_command(char* args[BUFFERSIZE]) {
 
     /* Empty args */
     for(i = 0; i < BUFFERSIZE; i++) {
-        args[i] = '\0';
+        args[i] = 0;
     }
 
     /* Split buffer into words in args */
@@ -102,7 +102,7 @@ void read_command2(char* args[BUFFERSIZE]) {
     }
 
     /* Remove newline */
-    while(args[i-1][c] != NULL) {
+    while(args[i-1][c] != 0) {
         printf("%c", args[i-1][c]);
 	    c++;
     }
@@ -171,7 +171,8 @@ void checkEnv(char ** args) {
     char *pagerArg[] = { "less", NULL };
 
     int fd1[2], fd2[2], fd3[2];
-    int printC, sortC, pagerC, grepC;
+    pid_t printC = -2, sortC = -2, pagerC = -2, grepC = -2;
+    int childStatus;
     int startGrep = 0;
 
     if(args[1] != 0) {
@@ -180,40 +181,101 @@ void checkEnv(char ** args) {
         startGrep = 1;
     }
 
-
     pipe(fd1);
-    printC = fork();
-    if(startGrep) grepC = fork();
-    sortC = fork();
-    pagerC = fork();
+    pipe(fd2);
+    pipe(fd3);
 
+    printC = fork();
+    if(printC > 0) sortC = fork();
+    if(sortC > 0) pagerC = fork();
+
+    if(startGrep) {
+        if(pagerC > 0) grepC = fork();
+    } else {
+        grepC = 1;
+    }
 
     if(printC == 0) {
+        fprintf(stderr, "Print start, (p: %i, s: %i, pp: %i)\n", printC, sortC, pagerC);
         close(STDOUT_FILENO);
         /* We do this because if we are not using grep we want sort to read
          * directly from print */
         if(startGrep) {
-            dup2(fd1[0], STDOUT_FILENO);
+            dup2(fd1[1], STDOUT_FILENO);
         } else {
-            dup2(fd2[0], STDOUT_FILENO);
+            dup2(fd2[1], STDOUT_FILENO);
         }
+        close(fd1[0]);
+        close(fd1[1]);
+        close(fd2[0]);
+        close(fd2[1]);
+        close(fd3[0]);
+        close(fd3[1]);
+        execvp(printEnvArg[0], printEnvArg);
     }
 
     if(startGrep) {
         if(grepC == 0) {
+            fprintf(stderr, "Grep start\n");
             close(STDIN_FILENO);
             close(STDOUT_FILENO);
-            dup2(fd1[1], STDIN_FILENO);
-            dup2(fd2[0], STDOUT_FILENO);
+            dup2(fd1[0], STDIN_FILENO);
+            dup2(fd2[1], STDOUT_FILENO);
+            close(fd1[0]);
+            close(fd1[1]);
+            close(fd2[0]);
+            close(fd2[1]);
+            close(fd3[0]);
+            close(fd3[1]);
+            execvp(args[0], args);
         }
     }
 
     if(sortC == 0) {
+        fprintf(stderr, "Sort start, (p: %i, s: %i, pp: %i)\n", printC, sortC, pagerC);
         close(STDIN_FILENO);
         close(STDOUT_FILENO);
+        dup2(fd2[0], STDIN_FILENO);
+        dup2(fd3[1], STDOUT_FILENO);
+        close(fd1[0]);
+        close(fd1[1]);
+        close(fd2[0]);
+        close(fd2[1]);
+        close(fd3[0]);
+        close(fd3[1]);
+        execvp(sortArg[0], sortArg);
+    }
+
+
+    if(pagerC == 0) {
+        fprintf(stderr, "Pager start, (p: %i, s: %i, pg: %i)\n", printC, sortC, pagerC);
+        close(STDIN_FILENO);
+        dup2(fd3[0], STDIN_FILENO);
+        close(fd1[0]);
+        close(fd1[1]);
+        close(fd2[0]);
+        close(fd2[1]);
+        close(fd3[0]);
+        close(fd3[1]);
+        execvp(pagerArg[0], pagerArg);
+    }
+
+    if(printC > 0 && sortC > 0 && pagerC > 0 && grepC > 0) {
+        close(fd1[0]);
+        close(fd1[1]);
+        close(fd2[0]);
+        close(fd2[1]);
+        close(fd3[0]);
+        close(fd3[1]);
+        waitpid(printC, &childStatus, 0);
+        if(startGrep) waitpid(grepC, &childStatus, WUNTRACED|WCONTINUED);
+        waitpid(sortC, &childStatus, 0);
+        printf("sort: %i\n", childStatus);
+        waitpid(pagerC, &childStatus, WUNTRACED|WCONTINUED);
 
     }
 
+    printf("lol");
 
     return;
 }
@@ -265,7 +327,6 @@ int parse_background_process(char** args) {
 
 int main(void) {
     char* args[BUFFERSIZE];
-    int i;
     while(TRUE) {
         prompt();
         read_command(args);
