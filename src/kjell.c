@@ -24,6 +24,7 @@
 
 #define ANSI_GREEN "\x1b[0;32m"
 #define ANSI_RESET "\x1b[0;0m"
+#define ANSI_CYAN "\x1b[1;36m"
 
 #define TRUE 1
 #define BUFFERSIZE 80 /* */
@@ -81,7 +82,6 @@ void read_command(char* args[BUFFERSIZE]) {
             buffer[i] = 0;
             kill = 1;
         }
-	printf("%c", buffer[i]);
     }
     buffer[i] = 0;
 
@@ -102,10 +102,11 @@ void read_command2(char* args[BUFFERSIZE]) {
     }
 
     /* Remove newline */
-    while(args[i-1][c] != NULL) { 
+    while(args[i-1][c] != NULL) {
         printf("%c", args[i-1][c]);
-	c++; 
+	    c++;
     }
+
     args[i-1][c-1] = 0;
     args[i] = 0;
 
@@ -156,10 +157,10 @@ void print_buffer(char ** args) {
  * Prints the command line prompt
  */
 void prompt() {
-    char hostname[256];
-    gethostname(hostname, 256);
-    printf("%s@%s %s\xE2\x9E\xA1 %s",
-           getenv("LOGNAME"), hostname, ANSI_GREEN, ANSI_RESET);
+    char cwd[256];
+    getcwd(cwd, 256);
+    printf("%s %s\xE2\x9E\xA1 %s%s %s",
+           getenv("LOGNAME"), ANSI_GREEN, ANSI_CYAN, cwd, ANSI_RESET);
     return;
 }
 
@@ -212,8 +213,6 @@ void checkEnv(char ** args) {
         close(STDOUT_FILENO);
 
     }
-
-
 
 
     return;
@@ -269,7 +268,7 @@ int main(void) {
     int i;
     while(TRUE) {
         prompt();
-        read_command2(args);
+        read_command(args);
 
         /* check if there are any system commands */
         if (system_commands(args))
