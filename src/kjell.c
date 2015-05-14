@@ -105,7 +105,7 @@ void forker(char* const* args) {
         childErrno = execvp(args[0], args);
 
         if(errno == 2) {
-            printf("%s: command not found\n", SHELL_NAME);
+            printf("%s: command not found: %s\n", SHELL_NAME, "--cmd entered--");
         }
     } else {
         printf("Couldn't fork");
@@ -130,21 +130,64 @@ void print_buffer(char ** args) {
 void prompt() {
     char hostname[256];
     gethostname(hostname, 256);
-    printf("%s@%s %s\xE2\x9E\xA1 %s", getenv("LOGNAME"), hostname, ANSI_GREEN, ANSI_RESET);
+    printf("%s@%s %s\xE2\x9E\xA1 %s",
+           getenv("LOGNAME"), hostname, ANSI_GREEN, ANSI_RESET);
     return;
 }
 
 
 void checkEnv(char ** args) {
+    char *printEnvArg[] = { "printenv", NULL };
+    char *sortArg[] = { "sort", NULL };
+    char *pagerArg[] = { "less", NULL };
+
+    int fd1[2], fd2[2], fd3[2];
+    int printC, sortC, pagerC, grepC;
+    int startGrep = 0;
 
     if(args[1] != 0) {
         /* We have arguments */
         args[0] = "grep";
-        fork();
+        startGrep = 1;
     }
-    fork();
-    fork();
-    fork();
+
+
+    pipe(fd1);
+    printC = fork();
+    if(startGrep) grepC = fork();
+    sortC = fork();
+    pagerC = fork();
+
+
+    if(printC == 0) {
+        close(STDOUT_FILENO);
+        /* We do this because if we are not using grep we want sort to read
+         * directly from print */
+        if(startGrep) {
+            dup2(fd1[0], STDOUT_FILENO);
+        } else {
+            dup2(fd2[0], STDOUT_FILENO);
+        }
+    }
+
+    if(startGrep) {
+        if(grepC == 0) {
+            close(STDIN_FILENO);
+            close(STDOUT_FILENO);
+            dup2(fd1[1], STDIN_FILENO);
+            dup2(fd2[0], STDOUT_FILENO);
+        }
+    }
+
+    if(sortC == 0) {
+        close(STDIN_FILENO);
+        close(STDOUT_FILENO);
+
+    }
+
+
+
+
     return;
 }
 
