@@ -5,6 +5,9 @@
  Version     :
  Copyright   : Your copyright notice
  Description : Kjell the Shell. A C linux Shell.
+ TODO:       : Check all system commands if they fail
+ TODO:       : Timer for FG processes
+ TODO:       : BG processes
  ============================================================================
  */
 
@@ -20,6 +23,7 @@
 
 #define _XOPEN_SOURCE 500
 #include <unistd.h>
+#include <fcntl.h>
 
 
 #define ANSI_GREEN "\x1b[0;32m"
@@ -204,7 +208,6 @@ void checkEnv(char ** args) {
     }
 
     if(printC == 0) {
-        fprintf(stderr, "Print start, (p: %i, s: %i, pp: %i)\n", printC, sortC, pagerC);
         close(STDOUT_FILENO);
         /* We do this because if we are not using grep we want sort to read
          * directly from print */
@@ -219,7 +222,6 @@ void checkEnv(char ** args) {
 
     if(startGrep) {
         if(grepC == 0) {
-            fprintf(stderr, "Grep start\n");
             close(STDIN_FILENO);
             close(STDOUT_FILENO);
             dup2(fd1[0], STDIN_FILENO);
@@ -230,7 +232,6 @@ void checkEnv(char ** args) {
     }
 
     if(sortC == 0) {
-        fprintf(stderr, "Sort start, (p: %i, s: %i, pp: %i)\n", printC, sortC, pagerC);
         close(STDIN_FILENO);
         close(STDOUT_FILENO);
         dup2(fd2[0], STDIN_FILENO);
@@ -241,7 +242,13 @@ void checkEnv(char ** args) {
 
 
     if(pagerC == 0) {
-        fprintf(stderr, "Pager start, (p: %i, s: %i, pg: %i)\n", printC, sortC, pagerC);
+        /*
+         * TODO: Handle if it fails and retry with another pager
+         */
+        pagerArg[0] = getenv("PAGER");
+        if(!strcmp(pagerArg[0], "")) {
+            pagerArg[0] = "less";
+        }
         close(STDIN_FILENO);
         dup2(fd3[0], STDIN_FILENO);
         pipeCloser(fd1, fd2, fd3);
@@ -305,9 +312,13 @@ int parse_background_process(char** args) {
     return 0;
 }
 
+int stdin_open() {
+    return !feof(stdin);
+}
+
 int main(void) {
     char* args[BUFFERSIZE];
-    while(TRUE) {
+    while(stdin_open()) {
         prompt();
         read_command(args);
 
