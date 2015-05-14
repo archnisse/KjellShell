@@ -63,10 +63,13 @@ void read_command(char* args[BUFFERSIZE]) {
         /* If current character is a space */
         if (buffer[i] == ' ') {
             /* Set the argument to point at the next character in buffer */
-            args[listIndex] = &buffer[i + 1];
+            /* -only- if there is no double space */
+            if(buffer[i+1] != ' ') {
+                args[listIndex] = &buffer[i + 1];
+                listIndex++;
+            }
             /* Set space to null pointer to end previous arg here */
             buffer[i] = 0;
-            listIndex++;
         }
 
         /* If we encounter newline */
@@ -119,37 +122,74 @@ void print_buffer(char ** args) {
     }
 }
 
+/*
+ * Function:    prompt
+ * -------------------
+ * Prints the command line prompt
+ */
 void prompt() {
-    char hostname[256], username[256];
+    char hostname[256];
     gethostname(hostname, 256);
     printf("%s@%s %s\xE2\x9E\xA1 %s", getenv("LOGNAME"), hostname, ANSI_GREEN, ANSI_RESET);
     return;
 }
 
+
+void checkEnv(char ** args) {
+
+    if(args[1] != 0) {
+        /* We have arguments */
+        args[0] = "grep";
+        fork();
+    }
+    fork();
+    fork();
+    fork();
+    return;
+}
+
+
 /*
- * Function:    interpret
+ * Function:    system_commands
  * -------------------
  * Looks for system commands in the input
  *
  * input: char* args[buffersize] containing the user input
  * returns: 1 if it matched a system command (?), 0 if not
  */
-int interpret(char* args[BUFFERSIZE])
-{
-    if (!strcmp("exit", args[0]))
-    {
+int system_commands(char* args[BUFFERSIZE]) {
+    if (!strcmp("exit", args[0])) {
         /* fprintf(stderr, "exiting\n"); */
-
         kill(getpid(), SIGTERM);
         return 1;
     }
-    if (!strcmp("cd", args[0]))
-    {
+
+    if (!strcmp("cd", args[0])) {
         /* fprintf(stderr, "changing directory\n");
         fprintf(stderr, "to: %s\n", args[1]); */
         chdir(args[1]);
         return 1;
     }
+
+    if(!strcmp("checkEnv", args[0])) {
+        checkEnv(args);
+        return 1;
+    }
+
+    return 0;
+}
+
+int parse_background_process(char** args) {
+    /* Get last character of last word in args */
+    int c = 0;
+    int w = 0;
+    while(args[++w] != 0) {}
+    while(args[w-1][++c] != 0) {}
+
+    if(args[w-1][c-1] == '&') {
+        args[w-1][c-1] = 0;
+    }
+
     return 0;
 }
 
@@ -159,12 +199,16 @@ int main(void) {
     while(TRUE) {
         prompt();
         read_command(args);
-        /* print_buffer(args); */
-        /* interpret if there are any system commands */
-        if (interpret(args))
+
+        /* check if there are any system commands */
+        if (system_commands(args))
             continue;
-        /* print_buffer(args); */
-        forker(args);
+
+        if(parse_background_process(args)) {
+            /* bg_forker(args); */
+        } else {
+            forker(args);
+        }
     }
 
 	return EXIT_SUCCESS;
@@ -186,9 +230,7 @@ void forker(char* buffer) {
     childPid = fork();
 
     if(childPid >= 0) {
-        /* Successful fork *//*
         if(childPid == 0) {
-            /* Child! *//*
             printf("Child.\n");
             /*close(STDOUT_FILENO);*//*
             dup2(fileDescriptor[0], STDIN_FILENO);
@@ -197,19 +239,16 @@ void forker(char* buffer) {
             /*close(fileDescriptor[1]);*//*
             execvp(child_buffer[0], child_buffer);
         } else {
-            /* Write command to child *//*
             printf("Parent\n");
             dup2(fileDescriptor[1], STDOUT_FILENO);
             write(fileDescriptor[1], buffer, BUFFERSIZE);
             /*close(fileDescriptor[0]);*//*
             close(fileDescriptor[1]);
             waitpid(childPid, &childStatus, WUNTRACED|WCONTINUED);
-            /* TODO: Den är printen kommer den aldrig till. varför? Vad händer i child?*//*
             printf("childstatus: %i\n", childStatus);
         }
     } else {
-        /* Fork failed *//*
-        printf("What");
+        printf("Fork failed");
     }
     return;
 }*/
