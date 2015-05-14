@@ -1,14 +1,15 @@
 /*
  ============================================================================
  Name        : Kjell.c
- Author      : 
- Version     :
- Copyright   : Your copyright notice
+ Author      : Viktor Björkholm & Jesper Bränn
+ Version     : 0.1
+ Copyright   : 2015
  Description : Kjell Shell. A C linux Shell.
 
+ TODO:       : Check if fork went bad in checkEnv
  TODO:       : Check all system commands if they fail
- TODO:       : Timer for FG processes
  TODO:       : BG processes
+ TODO:       : Vi borde kolla på WIFEXITED och de där kommandona.
  ============================================================================
  */
 
@@ -21,11 +22,13 @@
 #include <signal.h>
 #include <errno.h>
 #include <stdio.h>
-
-#define _XOPEN_SOURCE 500
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/time.h>  /* needed on some linux systems */
+#include <sys/resource.h>
+#include <unistd.h>  /* needed on some linux systems */
 
+#define _XOPEN_SOURCE 500
 
 #define ANSI_GREEN "\x1b[0;32m"
 #define ANSI_RESET "\x1b[0;0m"
@@ -33,6 +36,7 @@
 
 #define TRUE 1
 #define BUFFERSIZE 80 /* */
+#define SIGDET 1
 
 static const char SHELL_NAME[] = "Kjell Shell";
 
@@ -50,7 +54,7 @@ static const char SHELL_NAME[] = "Kjell Shell";
  *
  *  Ex. args[0] = first word, args[1] = second word, ..., args[n] = NULL.
  */
-void read_command(char* args[BUFFERSIZE]) {
+int read_command(char* args[BUFFERSIZE]) {
     char buffer[BUFFERSIZE];
     int i, listIndex, kill;
     listIndex = 1;
@@ -73,7 +77,7 @@ void read_command(char* args[BUFFERSIZE]) {
         if (buffer[i] == ' ') {
             /* Set the argument to point at the next character in buffer */
             /* -only- if there is no double space */
-            if(buffer[i+1] != ' ') {
+            if(buffer[i+1] != ' ' && buffer[i+1] != 0 && buffer[i+1] != '\n') {
                 args[listIndex] = &buffer[i + 1];
                 listIndex++;
             }
@@ -90,7 +94,11 @@ void read_command(char* args[BUFFERSIZE]) {
     }
     buffer[i] = 0;
 
-    return;
+    if(!strcmp(args[0], "")) {
+        return 0;
+    }
+
+    return 1;
 }
 
 void read_command2(char* args[BUFFERSIZE]) {
@@ -119,22 +127,41 @@ void read_command2(char* args[BUFFERSIZE]) {
 }
 
 /*
- * Function:    forker
+ * Function:    foreground_forker
  * -------------------
- * Forks a process that runs a command.
+ * Forks a process that runs a command in the foreground.
  *
- * input: char* const* args containing in first position the commnand to execute and the rest as arguments
+ * input: char* const* args containing in first position the commnand to execute
+ * and the rest as arguments
  * returns: void
  */
-void forker(char* const* args) {
+void foreground_forker(char* const* args) {
     pid_t childPid;
-    int childStatus, childErrno;
-    int fileDescriptor[2];
+    int childStatus, childErrno, fileDescriptor[2];
+    struct rusage usage_before, usage_after, usage_spent;
+    struct timeval time_begin, time_end, time_spent;
+
+    gettimeofday(&time_begin, NULL);
     pipe(fileDescriptor);
+    sighold(SIGCHLD);
     childPid = fork();
 
+    getrusage(RUSAGE_CHILDREN, &usage_before);
     if(childPid > 0) {
         waitpid(childPid, &childStatus, 0);
+        sigrelse(SIGCHLD);
+        getrusage(RUSAGE_CHILDREN, &usage_after);
+        timersub(&usage_after.ru_utime, &usage_before.ru_utime, &usage_spent.ru_utime);
+        timersub(&usage_after.ru_stime, &usage_before.ru_stime, &usage_spent.ru_stime);
+
+        gettimeofday(&time_end, NULL);
+        timersub(&time_end, &time_begin, &time_spent);
+
+        printf("%lu.%05is user\t %lu.%05is system\t %lu.%05i total\n",
+               usage_spent.ru_utime.tv_sec, usage_spent.ru_utime.tv_usec,
+               usage_spent.ru_stime.tv_sec, usage_spent.ru_stime.tv_usec,
+               time_spent.tv_sec, time_spent.tv_usec);
+
     } else if(childPid == 0) {
         childErrno = execvp(args[0], args);
 
@@ -144,6 +171,20 @@ void forker(char* const* args) {
     } else {
         printf("Couldn't fork");
     }
+}
+
+void background_forker(char* const* args) {
+    pid_t childPid;
+    int childErrno;
+    childPid = fork();
+    if(childPid == 0) {
+        childErrno = execvp(args[0], args);
+
+        if(childErrno == -1 && errno == 2) {
+            printf("%s: command not found: %s\n", SHELL_NAME, "--cmd entered--");
+        }
+    }
+    return;
 }
 
 
@@ -266,10 +307,9 @@ void checkEnv(char ** args) {
     if(printC > 0 && sortC > 0 && pagerC > 0 && grepC > 0) {
         pipeCloser(fd1, fd2, fd3);
         waitpid(printC, &childStatus, 0);
-        if(startGrep) waitpid(grepC, &childStatus, WUNTRACED|WCONTINUED);
+        if(startGrep) waitpid(grepC, &childStatus, 0);
         waitpid(sortC, &childStatus, 0);
-        waitpid(pagerC, &childStatus, WUNTRACED|WCONTINUED);
-
+        waitpid(pagerC, &childStatus, 0);
     }
 
     return;
@@ -288,6 +328,8 @@ int system_commands(char* args[BUFFERSIZE]) {
     if (!strcmp("exit", args[0])) {
         /* fprintf(stderr, "exiting\n"); */
         kill(getpid(), SIGTERM);
+        /* TODO: Waita på 0 tills det inte finns någon kvar att waita på */
+
         return 1;
     }
 
@@ -311,10 +353,14 @@ int parse_background_process(char** args) {
     int c = 0;
     int w = 0;
     while(args[++w] != 0) {}
+    if(!strcmp(args[w-1], "&")) {
+        args[w-1] = 0;
+        return 1;
+    }
     while(args[w-1][++c] != 0) {}
-
     if(args[w-1][c-1] == '&') {
-        args[w-1][c-1] = 0;
+        args[w - 1][c - 1] = 0;
+        return 1;
     }
 
     return 0;
@@ -324,20 +370,81 @@ int stdin_open() {
     return !feof(stdin);
 }
 
+void poll_background_process() {
+    int childStatus;
+    int counter;
+    int waitRet;
+    counter = 0;
+    while(counter < 10) {
+        waitRet = waitpid(0, &childStatus, WNOHANG);
+        if (waitRet < 0) {
+            if (errno == ECHILD) {
+                return;
+            }
+        }
+        if (waitRet == 0) counter++;
+        if (waitRet > 0) {
+            printf("Process [%i] finished\n", waitRet);
+        }
+    }
+}
+
+void sigchild_handler(int signo, siginfo_t* info, void * context) {
+    int childStatus;
+    int waitRet;
+    int buffer[BUFFERSIZE];
+    int i;
+    int index = 0;
+    /* Don't allow children to kill their parents */
+    /* if(info->si_pid != getppid() && info->si_pid != getpid()) return; */
+
+    waitRet = waitpid(0, &childStatus, WNOHANG);
+    if(waitRet > 0) {
+        printf("\nProcess [%i] finished\n", waitRet);
+
+        while((i = read(stdin, buffer, BUFFERSIZE)) > 0) {
+            buffer[index] = i;
+            index++;
+        }
+
+        prompt();
+        printf("%s", buffer);
+    }
+}
+
+void register_children_handlers() {
+    struct sigaction sa;
+
+    /* Set up handler */
+    sa.sa_sigaction = &sigchild_handler;
+    sa.sa_flags = SA_RESTART | SA_SIGINFO;
+    sigaction(SIGCHLD, &sa, 0);
+}
+
 int main(void) {
     char* args[BUFFERSIZE];
+
+    if(SIGDET == 1) {
+        register_children_handlers();
+    }
     while(stdin_open()) {
+
+        if(SIGDET != 1) {
+            poll_background_process();
+        }
+
         prompt();
-        read_command(args);
+        if(read_command(args) == 0)
+            continue;
 
         /* check if there are any system commands */
         if (system_commands(args))
             continue;
 
         if(parse_background_process(args)) {
-            /* bg_forker(args); */
+            background_forker(args);
         } else {
-            forker(args);
+            foreground_forker(args);
         }
     }
 
@@ -362,17 +469,14 @@ void forker(char* buffer) {
     if(childPid >= 0) {
         if(childPid == 0) {
             printf("Child.\n");
-            /*close(STDOUT_FILENO);*//*
             dup2(fileDescriptor[0], STDIN_FILENO);
             read(fileDescriptor[0], &child_buffer, BUFFERSIZE);
             close(fileDescriptor[0]);
-            /*close(fileDescriptor[1]);*//*
             execvp(child_buffer[0], child_buffer);
         } else {
             printf("Parent\n");
             dup2(fileDescriptor[1], STDOUT_FILENO);
             write(fileDescriptor[1], buffer, BUFFERSIZE);
-            /*close(fileDescriptor[0]);*//*
             close(fileDescriptor[1]);
             waitpid(childPid, &childStatus, WUNTRACED|WCONTINUED);
             printf("childstatus: %i\n", childStatus);
