@@ -4,7 +4,8 @@
  Author      : 
  Version     :
  Copyright   : Your copyright notice
- Description : Kjell the Shell. A C linux Shell.
+ Description : Kjell Shell. A C linux Shell.
+
  TODO:       : Check all system commands if they fail
  TODO:       : Timer for FG processes
  TODO:       : BG processes
@@ -168,6 +169,13 @@ void prompt() {
     return;
 }
 
+/*
+ * Function:    pipeCloser
+ * -----------------------
+ * Closes the three pipes used in checkEnv
+ * input: the three pipes
+ *
+ */
 void pipeCloser(int fd1[2], int fd2[2], int fd3[2]) {
     close(fd1[0]);
     close(fd1[1]);
