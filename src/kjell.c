@@ -164,6 +164,14 @@ void prompt() {
     return;
 }
 
+void pipeCloser(int fd1[2], int fd2[2], int fd3[2]) {
+    close(fd1[0]);
+    close(fd1[1]);
+    close(fd2[0]);
+    close(fd2[1]);
+    close(fd3[0]);
+    close(fd3[1]);
+}
 
 void checkEnv(char ** args) {
     char *printEnvArg[] = { "printenv", NULL };
@@ -205,12 +213,7 @@ void checkEnv(char ** args) {
         } else {
             dup2(fd2[1], STDOUT_FILENO);
         }
-        close(fd1[0]);
-        close(fd1[1]);
-        close(fd2[0]);
-        close(fd2[1]);
-        close(fd3[0]);
-        close(fd3[1]);
+        pipeCloser(fd1, fd2, fd3);
         execvp(printEnvArg[0], printEnvArg);
     }
 
@@ -221,12 +224,7 @@ void checkEnv(char ** args) {
             close(STDOUT_FILENO);
             dup2(fd1[0], STDIN_FILENO);
             dup2(fd2[1], STDOUT_FILENO);
-            close(fd1[0]);
-            close(fd1[1]);
-            close(fd2[0]);
-            close(fd2[1]);
-            close(fd3[0]);
-            close(fd3[1]);
+            pipeCloser(fd1, fd2, fd3);
             execvp(args[0], args);
         }
     }
@@ -237,12 +235,7 @@ void checkEnv(char ** args) {
         close(STDOUT_FILENO);
         dup2(fd2[0], STDIN_FILENO);
         dup2(fd3[1], STDOUT_FILENO);
-        close(fd1[0]);
-        close(fd1[1]);
-        close(fd2[0]);
-        close(fd2[1]);
-        close(fd3[0]);
-        close(fd3[1]);
+        pipeCloser(fd1, fd2, fd3);
         execvp(sortArg[0], sortArg);
     }
 
@@ -251,31 +244,18 @@ void checkEnv(char ** args) {
         fprintf(stderr, "Pager start, (p: %i, s: %i, pg: %i)\n", printC, sortC, pagerC);
         close(STDIN_FILENO);
         dup2(fd3[0], STDIN_FILENO);
-        close(fd1[0]);
-        close(fd1[1]);
-        close(fd2[0]);
-        close(fd2[1]);
-        close(fd3[0]);
-        close(fd3[1]);
+        pipeCloser(fd1, fd2, fd3);
         execvp(pagerArg[0], pagerArg);
     }
 
     if(printC > 0 && sortC > 0 && pagerC > 0 && grepC > 0) {
-        close(fd1[0]);
-        close(fd1[1]);
-        close(fd2[0]);
-        close(fd2[1]);
-        close(fd3[0]);
-        close(fd3[1]);
+        pipeCloser(fd1, fd2, fd3);
         waitpid(printC, &childStatus, 0);
         if(startGrep) waitpid(grepC, &childStatus, WUNTRACED|WCONTINUED);
         waitpid(sortC, &childStatus, 0);
-        printf("sort: %i\n", childStatus);
         waitpid(pagerC, &childStatus, WUNTRACED|WCONTINUED);
 
     }
-
-    printf("lol");
 
     return;
 }
