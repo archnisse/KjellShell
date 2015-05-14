@@ -2,7 +2,7 @@
  ============================================================================
  Name        : Kjell.c
  Author      : Viktor Björkholm & Jesper Bränn
- Version     : 0.11
+ Version     : 0.111
  Copyright   : 2015
  Description : Kjell Shell. A C linux Shell.
 
@@ -56,9 +56,10 @@ static const char SHELL_NAME[] = "Kjell Shell";
  */
 int read_command(char* args[BUFFERSIZE]) {
     char buffer[BUFFERSIZE];
-    int i, listIndex, kill;
+    int i, listIndex, kill, insideQuote;
     listIndex = 1;
     kill = 0;
+    insideQuote = 0;
 
     /* Read from STDIN to buffer */
     fgets(buffer, BUFFERSIZE, stdin);
@@ -74,7 +75,12 @@ int read_command(char* args[BUFFERSIZE]) {
     /* Loop through buffer */
     for (i = 0; i < BUFFERSIZE; i++) {
         /* If current character is a space */
-        if (buffer[i] == ' ') {
+        if(buffer[i] == '"' && insideQuote == 1) { insideQuote = 0; }
+        else if(buffer[i] == '"' && !insideQuote) { insideQuote = 1; }
+/*        if(buffer[i] == '\'' && !insideQuote) { insideQuote = 2; }
+        if(buffer[i] == '\'' && insideQuote == 2) { insideQuote = 0; }
+*/
+        if (buffer[i] == ' ' && !insideQuote) {
             /* Set the argument to point at the next character in buffer */
             /* -only- if there is no double space */
             if(buffer[i+1] != ' ' && buffer[i+1] != 0 && buffer[i+1] != '\n') {
@@ -392,23 +398,14 @@ void poll_background_process() {
 void sigchild_handler(int signo, siginfo_t* info, void * context) {
     int childStatus;
     int waitRet;
-    int buffer[BUFFERSIZE];
-    int i;
-    int index = 0;
     /* Don't allow children to kill their parents */
     /* if(info->si_pid != getppid() && info->si_pid != getpid()) return; */
 
     waitRet = waitpid(0, &childStatus, WNOHANG);
     if(waitRet > 0) {
         printf("\nProcess [%i] finished\n", waitRet);
-
-        while((i = read(stdin, buffer, BUFFERSIZE)) > 0) {
-            buffer[index] = i;
-            index++;
-        }
-
         prompt();
-        printf("%s", buffer);
+        printf("\n");
     }
 }
 
