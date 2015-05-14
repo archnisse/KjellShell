@@ -2,7 +2,7 @@
  ============================================================================
  Name        : Kjell.c
  Author      : Viktor Björkholm & Jesper Bränn
- Version     : 0.1
+ Version     : 0.11
  Copyright   : 2015
  Description : Kjell Shell. A C linux Shell.
 
