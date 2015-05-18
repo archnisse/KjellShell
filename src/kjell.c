@@ -69,11 +69,6 @@ int read_command(char* args[BUFFERSIZE]) {
         perror(NULL);
     }
 
-    /* Empty args */
-    for(i = 0; i < BUFFERSIZE; i++) {
-        args[i] = 0;
-    }
-
     /* Split buffer into words in args */
     args[0] = &buffer[0];
 
@@ -110,8 +105,7 @@ int read_command(char* args[BUFFERSIZE]) {
     return 1;
 }
 
-int read_command2(char* args[BUFFERSIZE]) {
-    char buffer[BUFFERSIZE];
+int read_command2(char buffer[BUFFERSIZE], char* args[BUFFERSIZE]) {
     int i = 0;
 
     /* Read from STDIN to buffer */
@@ -119,20 +113,18 @@ int read_command2(char* args[BUFFERSIZE]) {
         perror(NULL);
     }
     buffer[strlen(buffer) - 1] = 0;
-
     strncpy(prev_cmd, buffer, BUFFERSIZE);
+
     args[0] = strtok(buffer, " ");
-    printf("%s\n", args[i]);
     while(args[i] != NULL) {
         i++;
         args[i] = strtok(NULL, " ");
-        printf("%s\n", args[i]);
     }
 
-    if(!strcmp(args[0], "")) {
+    if(args[0] == 0) {
         return 0;
     }
-    
+
     return 1;
 }
 
@@ -158,7 +150,7 @@ void timesubtract(struct timeval *a, struct timeval *b, struct timeval *res) {
  */
 void foreground_forker(char* const* args) {
     pid_t childPid;
-    int childStatus, childErrno, fileDescriptor[2];
+    int childStatus, childErrno, fileDescriptor[2], i;
     struct rusage rus;
     struct timeval time_begin, time_end, time_spent;
 
@@ -189,7 +181,10 @@ void foreground_forker(char* const* args) {
         childErrno = execvp(args[0], args);
 
         if(childErrno == -1 && errno == 2) {
-            printf("%s: command not found: %s\n", SHELL_NAME, prev_cmd);
+            fprintf(stderr, "%s: command not found: ", SHELL_NAME);
+            for(i = 0; i < BUFFERSIZE; i++) {
+                fprintf(stderr, "%s ", args[i]);
+            }
         }
     } else {
         printf("Couldn't fork");
@@ -485,12 +480,12 @@ int parse_background_process(char** args) {
             args[i] = 0;
             return 1;
         }
-
         if(args[i][strlen(args[i])-1] == '&') {
             args[i][strlen(args[i])-1] = 0;
             return 1;
         }
     }
+
 
     return 0;
 }
@@ -540,27 +535,30 @@ void register_children_handlers() {
 }
 
 int main(void) {
-    char* args[BUFFERSIZE];
+    char buffer[BUFFERSIZE] = {0};
+    char* args[BUFFERSIZE] = {0};
 
     register_children_handlers();
 
 
     while(stdin_open()) {
+        memset(args, 0, BUFFERSIZE);
+        memset(buffer, 0, BUFFERSIZE);
 
         if(SIGDET != 1) {
             poll_background_process();
         }
 
         prompt();
-        if(read_command2(args) == 0)
+        if(read_command2(buffer, args) == 0)
             continue;
+
 
         /* check if there are any system commands */
         if (system_commands(args))
             continue;
 
         if(parse_background_process(args)) {
-            printf("BG PROCESS");
             background_forker(args);
         } else {
             foreground_forker(args);
