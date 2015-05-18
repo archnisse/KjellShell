@@ -203,7 +203,7 @@ void pipeCloser(int fd1[2], int fd2[2], int fd3[2]) {
 void checkEnv(char ** args) {
     char *printEnvArg[] = { "printenv", NULL };
     char *sortArg[] = { "sort", NULL };
-    char *pagerArg[] = { "less", NULL };
+    char *pagerArg[] = { "less", "-C", NULL };
 
     int fd1[2], fd2[2], fd3[2];
     pid_t printC = -2, sortC = -2, pagerC = -2, grepC = -2;
@@ -447,9 +447,9 @@ void sigchild_handler(int signo, siginfo_t* info, void * context) {
 }
 
 void sigint_handler(int signo, siginfo_t* info, void * context) {
-    printf("\n");
+/*    printf("\n");
     prompt();
-    fflush(stdout);
+    fflush(stdout);*/
 }
 
 void register_children_handlers() {
@@ -466,7 +466,7 @@ void register_children_handlers() {
 
     sa_int.sa_sigaction = &sigint_handler;
     sigemptyset(&sa_int.sa_mask);
-    sa_int.sa_flags = SA_RESTART | SA_SIGINFO;
+    sa_int.sa_flags = SA_RESTART | SA_SIGINFO | SA_NOCLDWAIT;
     sigaction(SIGINT, &sa_int, 0);
 
 }
