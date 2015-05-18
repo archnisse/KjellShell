@@ -157,7 +157,7 @@ void timesubtract(struct timeval *a, struct timeval *b, struct timeval *res) {
 void foreground_forker(char* const* args) {
     pid_t childPid;
     int childStatus, childErrno, fileDescriptor[2];
-    struct rusage usage_before, usage_after, usage_spent;
+    struct rusage rus;
     struct timeval time_begin, time_end, time_spent;
 
     gettimeofday(&time_begin, NULL);
@@ -169,20 +169,18 @@ void foreground_forker(char* const* args) {
     sighold(SIGCHLD);
     childPid = fork();
 
-    getrusage(RUSAGE_CHILDREN, &usage_before);
     if(childPid > 0) {
-        waitpid(childPid, &childStatus, 0);
+        if (wait4(childPid, &childStatus, 0, &rus) <= 0) {
+            fprintf(stderr, "Error waiting for child");
+        }
         sigrelse(SIGCHLD);
-        getrusage(RUSAGE_CHILDREN, &usage_after);
-        timesubtract(&usage_after.ru_utime, &usage_before.ru_utime, &usage_spent.ru_utime);
-        timesubtract(&usage_after.ru_stime, &usage_before.ru_stime, &usage_spent.ru_stime);
 
         gettimeofday(&time_end, NULL);
         timesubtract(&time_end, &time_begin, &time_spent);
 
-        printf("%lu.%05lis user\t %lu.%05lis system\t %lu.%05li total\n",
-               usage_spent.ru_utime.tv_sec, usage_spent.ru_utime.tv_usec,
-               usage_spent.ru_stime.tv_sec, usage_spent.ru_stime.tv_usec,
+        printf("%lu.%05lis user\t %lu.%05lis system\t %lu.%05lis total\n",
+               rus.ru_utime.tv_sec, rus.ru_utime.tv_usec,
+               rus.ru_stime.tv_sec, rus.ru_stime.tv_usec,
                time_spent.tv_sec, time_spent.tv_usec);
 
     } else if(childPid == 0) {
@@ -500,7 +498,7 @@ int stdin_open() {
 
 void sigchild_handler(int signo, siginfo_t* info, void * context) {
     int childStatus;
-    int waitRet;
+    pid_t waitRet;
     struct rusage rus;
     /* Don't allow children to kill their parents */
     /* if(info->si_pid != getppid() && info->si_pid != getpid()) return; */
