@@ -131,6 +131,20 @@ void read_command2(char* args[BUFFERSIZE]) {
     return;
 }
 
+void timesubtract(struct timeval *a, struct timeval *b, struct timeval *res) {
+    int msec, sec;
+    if (a->tv_sec > b->tv_sec) {
+        msec = 999999 - b->tv_usec;
+        msec = msec + a->tv_usec;
+        if (msec >= 1000000) {
+            sec = sec + 1;
+            msec = msec - 100000;
+        }
+    }
+    sec = sec + (a->tv_sec - b->tv_sec);
+    res->tv_sec = sec;
+    res->tv_usec = msec;
+}
 
 /*
  * Function:    foreground_forker
@@ -157,11 +171,11 @@ void foreground_forker(char* const* args) {
         waitpid(childPid, &childStatus, 0);
         sigrelse(SIGCHLD);
         getrusage(RUSAGE_CHILDREN, &usage_after);
-        timersub(&usage_after.ru_utime, &usage_before.ru_utime, &usage_spent.ru_utime);
-        timersub(&usage_after.ru_stime, &usage_before.ru_stime, &usage_spent.ru_stime);
+        timesubtract(&usage_after.ru_utime, &usage_before.ru_utime, &usage_spent.ru_utime);
+        timesubtract(&usage_after.ru_stime, &usage_before.ru_stime, &usage_spent.ru_stime);
 
         gettimeofday(&time_end, NULL);
-        timersub(&time_end, &time_begin, &time_spent);
+        timesubtract(&time_end, &time_begin, &time_spent);
 
         printf("%lu.%05lis user\t %lu.%05lis system\t %lu.%05li total\n",
                usage_spent.ru_utime.tv_sec, usage_spent.ru_utime.tv_usec,
