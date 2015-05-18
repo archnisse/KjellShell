@@ -256,48 +256,26 @@ void checkEnv(char ** args) {
     int childStatus;
     int startGrep = 0;
 
+    sighold(SIGCHLD);
     if(args[1] != 0) {
         /* We have arguments */
         args[0] = "grep";
         startGrep = 1;
     }
 
-    if(pipe(fd1) == -1) {
-        perror(NULL);
-        return;
-    }
-    if(pipe(fd2) == -1) {
-        perror(NULL);
-        close(fd1[0]);
-        close(fd1[1]);
-        return;
-    }
-    if(pipe(fd3) == -1) {
-        perror(NULL);
-        close(fd1[0]);
-        close(fd1[1]);
-        close(fd2[0]);
-        close(fd2[1]);
-        return;
-    }
+    pipe(fd1);
+    pipe(fd2);
+    pipe(fd3);
 
     printC = fork();
     if(printC > 0) sortC = fork();
     if(sortC > 0) pagerC = fork();
-
     if(startGrep) {
         if(pagerC > 0) grepC = fork();
     } else {
         grepC = 1;
     }
-
-    /* Error handling */
-    if(printC == -1 || sortC == -1 || pagerC == -1 || grepC == -1) {
-        fprintf(stderr, "%s: could not fork", SHELL_NAME);
-        pipeCloser(fd1, fd2, fd3);
-        return;
-    }
-    
+   
 
     if(printC == 0) {
         close(STDOUT_FILENO);
@@ -353,6 +331,7 @@ void checkEnv(char ** args) {
         if(startGrep) waitpid(grepC, &childStatus, 0);
         waitpid(sortC, &childStatus, 0);
         waitpid(pagerC, &childStatus, 0);
+        sigrelse(SIGCHLD);
     }
 
     return;
@@ -514,6 +493,7 @@ void sigchild_handler(int signo, siginfo_t* info, void * context) {
 
 void sigint_handler(int signo, siginfo_t* info, void * context) {
     printf("\n");
+    prompt();
     fflush(stdout);
 }
 
@@ -524,11 +504,13 @@ void register_children_handlers() {
     if(SIGDET == 1) {
         /* Set up handler */
         sa_chld.sa_sigaction = &sigchild_handler;
+        sigemptyset(&sa_chld.sa_mask);
         sa_chld.sa_flags = SA_RESTART | SA_SIGINFO;
         sigaction(SIGCHLD, &sa_chld, 0);
     }
 
     sa_int.sa_sigaction = &sigint_handler;
+    sigemptyset(&sa_int.sa_mask);
     sa_int.sa_flags = SA_RESTART | SA_SIGINFO;
     sigaction(SIGINT, &sa_int, 0);
 
