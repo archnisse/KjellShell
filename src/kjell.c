@@ -2,7 +2,7 @@
  ============================================================================
  Name        : Kjell.c
  Author      : Viktor Björkholm & Jesper Bränn
- Version     : 0.111
+ Version     : 0.112
  Copyright   : 2015
  Description : Kjell Shell. A C linux Shell.
 
@@ -41,6 +41,8 @@
 
 static const char SHELL_NAME[] = "Kjell Shell";
 static char prev_path[BUFFERSIZE];
+
+void poll_background_process();
 
 /*
  * Function:    read_command
@@ -315,7 +317,7 @@ int system_cd_prev(char * args[BUFFERSIZE]) {
                 return 1;
             }
         } else {
-            fprintf(stderr, strerror(20));
+            fprintf(stderr, "%s", strerror(20));
             return 1;
         }
     }
@@ -440,25 +442,6 @@ int stdin_open() {
     return !feof(stdin);
 }
 
-void poll_background_process() {
-    int childStatus;
-    int counter;
-    int waitRet;
-    counter = 0;
-    while(counter < 10) {
-        waitRet = waitpid(0, &childStatus, WNOHANG);
-        if (waitRet < 0) {
-            if (errno == ECHILD) {
-                return;
-            }
-        }
-        if (waitRet == 0) counter++;
-        if (waitRet > 0) {
-            printf("Process [%i] finished\n", waitRet);
-        }
-    }
-}
-
 void sigchild_handler(int signo, siginfo_t* info, void * context) {
     int childStatus;
     int waitRet;
@@ -524,3 +507,23 @@ int main(void) {
 
 	return EXIT_SUCCESS;
 }
+
+void poll_background_process() {
+    int childStatus;
+    int counter;
+    int waitRet;
+    counter = 0;
+    while(counter < 10) {
+        waitRet = waitpid(0, &childStatus, WNOHANG);
+        if (waitRet < 0) {
+            if (errno == ECHILD) {
+                return;
+            }
+        }
+        if (waitRet == 0) counter++;
+        if (waitRet > 0) {
+            printf("Process [%i] finished\n", waitRet);
+        }
+    }
+}
+
