@@ -334,6 +334,7 @@ void system_cd_home(char * args[BUFFERSIZE]) {
             for(i = 0; i < sizeof(addedPath); i++) {
                 addedPath[i] = 0;
             }
+
             /* Home of user */
             home = getenv("HOME");
             lineLen = strlen(home);
@@ -475,25 +476,38 @@ void sigchild_handler(int signo, siginfo_t* info, void * context) {
                rus.ru_utime.tv_sec, rus.ru_utime.tv_usec,
                rus.ru_stime.tv_sec, rus.ru_stime.tv_usec);
         prompt();
-        printf("\n");
+        fflush(stdout);
     }
 }
 
-void register_children_handlers() {
-    struct sigaction sa;
+void sigint_handler(int signo, siginfo_t* info, void * context) {
+    printf("\n");
+    fflush(stdout);
+}
 
-    /* Set up handler */
-    sa.sa_sigaction = &sigchild_handler;
-    sa.sa_flags = SA_RESTART | SA_SIGINFO;
-    sigaction(SIGCHLD, &sa, 0);
+void register_children_handlers() {
+    struct sigaction sa_chld;
+    struct sigaction sa_int;
+
+    if(SIGDET == 1) {
+        /* Set up handler */
+        sa_chld.sa_sigaction = &sigchild_handler;
+        sa_chld.sa_flags = SA_RESTART | SA_SIGINFO;
+        sigaction(SIGCHLD, &sa_chld, 0);
+    }
+
+    sa_int.sa_sigaction = &sigint_handler;
+    sa_int.sa_flags = SA_RESTART | SA_SIGINFO;
+    sigaction(SIGINT, &sa_int, 0);
+
 }
 
 int main(void) {
     char* args[BUFFERSIZE];
 
-    if(SIGDET == 1) {
-        register_children_handlers();
-    }
+    register_children_handlers();
+
+
     while(stdin_open()) {
 
         if(SIGDET != 1) {
