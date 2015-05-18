@@ -478,12 +478,16 @@ int stdin_open() {
 void sigchild_handler(int signo, siginfo_t* info, void * context) {
     int childStatus;
     int waitRet;
+    struct rusage rus;
     /* Don't allow children to kill their parents */
     /* if(info->si_pid != getppid() && info->si_pid != getpid()) return; */
 
-    waitRet = waitpid(0, &childStatus, WNOHANG);
+    waitRet = wait4(0, &childStatus, WNOHANG, rus);
     if(waitRet > 0) {
         printf("\nProcess [%i] finished\n", waitRet);
+        printf("%lu.%05lis user\t %lu.%05lis system\n ",
+               rus.ru_utime.tv_sec, rus.ru_utime.tv_usec,
+               rus.ru_stime.tv_sec, rus.ru_stime.tv_usec);
         prompt();
         fflush(stdout);
     }
@@ -543,20 +547,23 @@ int main(void) {
 
 void poll_background_process() {
     int childStatus;
-    int counter;
     int waitRet;
-    counter = 0;
-    while(counter < 10) {
-        waitRet = waitpid(0, &childStatus, WNOHANG);
+    struct rusage rus;
+
+    waitRet = wait4(0, &childStatus, WNOHANG, rus);
+    while(waitRet > 0) {
         if (waitRet < 0) {
             if (errno == ECHILD) {
                 return;
             }
         }
-        if (waitRet == 0) counter++;
         if (waitRet > 0) {
             printf("Process [%i] finished\n", waitRet);
+            printf("%lu.%05lis user\t %lu.%05lis system\n ",
+                   rus.ru_utime.tv_sec, rus.ru_utime.tv_usec,
+                   rus.ru_stime.tv_sec, rus.ru_stime.tv_usec);
         }
+        waitRet = wait4(0, &childStatus, WNOHANG, rus);
     }
 }
 
