@@ -7,6 +7,9 @@
  Description : Kjell Shell. A C linux Shell.
 
  TODO: * Check if fork went bad in checkEnv
+       * In checkEnv, check if PAGER variable is set then use that
+        * otherwise use less, if that does not work
+        * use more 
        * Check all commands if they fail (error return values and errno)
          * Give feedback
        * (Maybe use WIFEXITED etc)
@@ -443,6 +446,7 @@ int internal_commands(char* args[BUFFERSIZE]) {
     }
 
     if(!strcmp("checkEnv", args[0])) {
+        /* Don't allow interrupts when we're in checkEnv */
         checkEnv(args);
         return 1;
     }
