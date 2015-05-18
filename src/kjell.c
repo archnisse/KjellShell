@@ -30,7 +30,6 @@
 #include <errno.h>
 #include <fcntl.h>
 
-
 #define ANSI_GREEN "\x1b[0;32m"
 #define ANSI_RESET "\x1b[0;0m"
 #define ANSI_CYAN "\x1b[1;36m"
@@ -60,55 +59,7 @@ void poll_background_process();
  *
  *  Ex. args[0] = first word, args[1] = second word, ..., args[n] = NULL.
  */
-int read_command(char* args[BUFFERSIZE]) {
-    char buffer[BUFFERSIZE];
-    int i, listIndex, kill, insideQuote;
-    listIndex = 1;
-    kill = 0;
-    insideQuote = 0;
-
-    /* Read from STDIN to buffer */
-    if(fgets(buffer, BUFFERSIZE, stdin) == NULL) {
-        perror(NULL);
-    }
-
-    /* Split buffer into words in args */
-    args[0] = &buffer[0];
-
-    /* Loop through buffer */
-    for (i = 0; i < BUFFERSIZE; i++) {
-        /* If current character is a space */
-        if(buffer[i] == '"' && insideQuote == 1) { insideQuote = 0; }
-        else if(buffer[i] == '"' && !insideQuote) { insideQuote = 1; }
-
-        if (buffer[i] == ' ' && !insideQuote) {
-            /* Set the argument to point at the next character in buffer */
-            /* -only- if there is no double space */
-            if(buffer[i+1] != ' ' && buffer[i+1] != 0 && buffer[i+1] != '\n') {
-                args[listIndex] = &buffer[i + 1];
-                listIndex++;
-            }
-            /* Set space to null pointer to end previous arg here */
-            buffer[i] = 0;
-        }
-
-        /* If we encounter newline */
-        if (buffer[i] == '\n' || buffer[i] == '\r' || kill) {
-            /* Just null it */
-            buffer[i] = 0;
-            kill = 1;
-        }
-    }
-    buffer[i-1] = 0;
-
-    if(!strcmp(args[0], "")) {
-        return 0;
-    }
-
-    return 1;
-}
-
-int read_command2(char buffer[BUFFERSIZE], char* args[BUFFERSIZE]) {
+int read_command(char buffer[BUFFERSIZE], char* args[BUFFERSIZE]) {
     int i = 0;
 
     /* Read from STDIN to buffer */
@@ -536,7 +487,7 @@ int main(void) {
         }
 
         prompt();
-        if(read_command2(buffer, args) == 0)
+        if(read_command(buffer, args) == 0)
             continue;
 
 
