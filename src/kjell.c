@@ -417,7 +417,7 @@ void system_cd(char * args[BUFFERSIZE]) {
  * input: char* args[buffersize] containing the user input
  * returns: 1 if it matched a system command (?), 0 if not
  */
-int system_commands(char* args[BUFFERSIZE]) {
+int internal_commands(char* args[BUFFERSIZE]) {
     if (!strcmp("exit", args[0])) {
         /* Ignore the SIGQUIT signal for this process */
         signal(SIGQUIT, SIG_IGN);
@@ -537,7 +537,7 @@ int main(void) {
 
 
         /* check if there are any system commands */
-        if (system_commands(args))
+        if (internal_commands(args))
             continue;
 
         if(parse_background_process(args)) {
