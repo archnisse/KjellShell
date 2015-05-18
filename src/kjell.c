@@ -65,7 +65,9 @@ int read_command(char* args[BUFFERSIZE]) {
     insideQuote = 0;
 
     /* Read from STDIN to buffer */
-    fgets(buffer, BUFFERSIZE, stdin);
+    if(fgets(buffer, BUFFERSIZE, stdin) == NULL) {
+        perror(NULL);
+    }
 
     /* Empty args */
     for(i = 0; i < BUFFERSIZE; i++) {
@@ -99,7 +101,7 @@ int read_command(char* args[BUFFERSIZE]) {
             kill = 1;
         }
     }
-    buffer[i] = 0;
+    buffer[i-1] = 0;
 
     if(!strcmp(args[0], "")) {
         return 0;
@@ -135,7 +137,11 @@ void foreground_forker(char* const* args) {
     struct timeval time_begin, time_end, time_spent;
 
     gettimeofday(&time_begin, NULL);
-    pipe(fileDescriptor);
+    if(pipe(fileDescriptor) == -1) {
+        perror(NULL);
+        return;
+    }
+
     sighold(SIGCHLD);
     childPid = fork();
 
@@ -197,7 +203,9 @@ void print_buffer(char ** args) {
  */
 void prompt() {
     char cwd[256];
-    getcwd(cwd, 256);
+    if(getcwd(cwd, 256) == NULL) {
+        cwd[0] = 'x';
+    }
     printf("%s %s\xE2\x9E\xA1 %s%s %s",
            getenv("LOGNAME"), ANSI_GREEN, ANSI_CYAN, cwd, ANSI_RESET);
     return;
@@ -235,9 +243,24 @@ void checkEnv(char ** args) {
         startGrep = 1;
     }
 
-    pipe(fd1);
-    pipe(fd2);
-    pipe(fd3);
+    if(pipe(fd1) == -1) {
+        perror(NULL);
+        return;
+    }
+    if(pipe(fd2) == -1) {
+        perror(NULL);
+        close(fd1[0]);
+        close(fd1[1]);
+        return;
+    }
+    if(pipe(fd3) == -1) {
+        perror(NULL);
+        close(fd1[0]);
+        close(fd1[1]);
+        close(fd2[0]);
+        close(fd2[1]);
+        return;
+    }
 
     printC = fork();
     if(printC > 0) sortC = fork();
@@ -248,6 +271,14 @@ void checkEnv(char ** args) {
     } else {
         grepC = 1;
     }
+
+    /* Error handling */
+    if(printC == -1 || sortC == -1 || pagerC == -1 || grepC == -1) {
+        fprintf(stderr, "%s: could not fork", SHELL_NAME);
+        pipeCloser(fd1, fd2, fd3);
+        return;
+    }
+    
 
     if(printC == 0) {
         close(STDOUT_FILENO);
@@ -372,8 +403,10 @@ void system_cd(char * args[BUFFERSIZE]) {
     }
 
     args[1][strlen(args[1])] = 0;
-    printf("Trying: %s\n", args[1]);
-    getcwd(prev_path, BUFFERSIZE);
+    /* printf("Trying: %s\n", args[1]); */
+    if(getcwd(prev_path, BUFFERSIZE) == NULL) {
+        fprintf(stderr, "%s: could not get CWD %s\n", SHELL_NAME, strerror(errno));
+    }
     if(chdir(args[1]) < 0) {
         fprintf(stderr, "%s\n", strerror(errno));
     }
