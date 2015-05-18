@@ -400,8 +400,6 @@ int system_commands(char* args[BUFFERSIZE]) {
 
         /* Kill itself */
         kill(getpid(), SIGQUIT);
-        /* fprintf(stderr, "exiting\n"); */
-        /* TODO: Waita på 0 tills det inte finns någon kvar att waita på */
 
         return 1;
     }
