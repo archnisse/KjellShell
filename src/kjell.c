@@ -5,7 +5,7 @@
  Version     : 0.112
  Copyright   : 2015
  Description : Kjell Shell. A C linux Shell.
-
+TODO:  Första gången CD körs fungerar den ej.
  TODO:       : Check if fork went bad in checkEnv
  TODO:       : Check all system commands if they fail
  TODO:       : BG processes
@@ -40,7 +40,7 @@ pid_t wait4(pid_t pid, int *status, int options, struct rusage *rusage);
 
 static const char SHELL_NAME[] = "Kjell Shell";
 static char prev_path[BUFFERSIZE];
-static char prev_cmd;
+static char prev_cmd[BUFFERSIZE];
 
 void poll_background_process();
 
@@ -118,9 +118,9 @@ int read_command2(char* args[BUFFERSIZE]) {
     if(fgets(buffer, BUFFERSIZE, stdin) == NULL) {
         perror(NULL);
     }
-    strcpy(&prev_cmd, buffer, BUFFERSIZE);
     buffer[strlen(buffer) - 1] = 0;
 
+    strncpy(prev_cmd, buffer, BUFFERSIZE);
     args[0] = strtok(buffer, " ");
     printf("%s\n", args[i]);
     while(args[i] != NULL) {
@@ -204,7 +204,7 @@ void background_forker(char* const* args) {
         childErrno = execvp(args[0], args);
 
         if(childErrno == -1 && errno == 2) {
-            printf("%s: command not found: %s\n", SHELL_NAME, "--cmd entered--");
+            printf("%s: command not found: %s\n", SHELL_NAME, prev_cmd);
         }
     }
     return;
@@ -477,18 +477,19 @@ int system_commands(char* args[BUFFERSIZE]) {
 }
 
 int parse_background_process(char** args) {
+    int i;    
     /* Get last character of last word in args */
-    int c = 0;
-    int w = 0;
-    while(args[++w] != 0) {}
-    if(!strcmp(args[w-1], "&")) {
-        args[w-1] = 0;
-        return 1;
-    }
-    while(args[w-1][++c] != 0) {}
-    if(args[w-1][c-1] == '&') {
-        args[w - 1][c - 1] = 0;
-        return 1;
+    for(i = 0; i < BUFFERSIZE; i++) {
+        if(args[i] == 0) break;
+        if(!strcmp(args[i], "&")) {
+            args[i] = 0;
+            return 1;
+        }
+
+        if(args[i][strlen(args[i])-1] == '&') {
+            args[i][strlen(args[i])-1] = 0;
+            return 1;
+        }
     }
 
     return 0;
@@ -559,6 +560,7 @@ int main(void) {
             continue;
 
         if(parse_background_process(args)) {
+            printf("BG PROCESS");
             background_forker(args);
         } else {
             foreground_forker(args);
