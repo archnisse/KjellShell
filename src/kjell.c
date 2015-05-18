@@ -5,12 +5,6 @@
  Version     : 0.112
  Copyright   : 2015
  Description : Kjell Shell. A C linux Shell.
-TODO:  Första gången CD körs fungerar den ej.
- TODO:       : 
- TODO:       : Check all system commands if they fail
- TODO:       : BG processes
- TODO:       : Vi borde kolla på WIFEXITED och de där kommandona.
-
 
  TODO: * Check if fork went bad in checkEnv
        * Check all commands if they fail (error return values and errno)
