@@ -342,9 +342,21 @@ void checkEnv(char ** args) {
  */
 int system_commands(char* args[BUFFERSIZE]) {
     if (!strcmp("exit", args[0])) {
-        /* fprintf(stderr, "exiting\n"); */
-        kill(getpid(), SIGTERM);
-        /* TODO: Waita på 0 tills det inte finns någon kvar att waita på */
+
+        /* Ignore the SIGQUIT signal for this process */
+        signal(SIGQUIT, SIG_IGN);
+
+        /* Ask the other processes in the group to quit */
+        kill(0, SIGQUIT);
+
+        /* Clean up zombies */
+        poll_background_process();
+
+        /* Start listening to SIGQUIT again with default handling */
+        signal(SIGQUIT, SIG_DFL);
+
+        /* Kill itself */
+        kill(getpid(), SIGQUIT);
 
         return 1;
     }
