@@ -132,18 +132,14 @@ void read_command2(char* args[BUFFERSIZE]) {
 }
 
 void timesubtract(struct timeval *a, struct timeval *b, struct timeval *res) {
-    int msec, sec;
-    if (a->tv_sec > b->tv_sec) {
-        msec = 999999 - b->tv_usec;
-        msec = msec + a->tv_usec;
-        if (msec >= 1000000) {
-            sec = sec + 1;
-            msec = msec - 100000;
-        }
+    res->tv_sec = 0;
+    res->tv_usec = 0;
+    res->tv_sec = a->tv_sec - b->tv_sec;
+    res->tv_usec = a->tv_usec - b->tv_usec;
+    if (res->tv_usec < 0) {
+        res->tv_sec -= 1;
+        res->tv_usec += 1000000;
     }
-    sec = sec + (a->tv_sec - b->tv_sec);
-    res->tv_sec = sec;
-    res->tv_usec = msec;
 }
 
 /*
