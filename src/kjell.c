@@ -40,6 +40,7 @@ pid_t wait4(pid_t pid, int *status, int options, struct rusage *rusage);
 
 static const char SHELL_NAME[] = "Kjell Shell";
 static char prev_path[BUFFERSIZE];
+static char prev_cmd;
 
 void poll_background_process();
 
@@ -117,6 +118,7 @@ int read_command2(char* args[BUFFERSIZE]) {
     if(fgets(buffer, BUFFERSIZE, stdin) == NULL) {
         perror(NULL);
     }
+    strcpy(&prev_cmd, buffer, BUFFERSIZE);
     buffer[strlen(buffer) - 1] = 0;
 
     args[0] = strtok(buffer, " ");
@@ -187,7 +189,7 @@ void foreground_forker(char* const* args) {
         childErrno = execvp(args[0], args);
 
         if(childErrno == -1 && errno == 2) {
-            printf("%s: command not found: %s\n", SHELL_NAME, "--cmd entered--");
+            printf("%s: command not found: %s\n", SHELL_NAME, prev_cmd);
         }
     } else {
         printf("Couldn't fork");
