@@ -40,7 +40,7 @@
 #define SIGDET 1
 
 static const char SHELL_NAME[] = "Kjell Shell";
-
+static char prev_path[BUFFERSIZE];
 
 /*
  * Function:    read_command
@@ -104,31 +104,6 @@ int read_command(char* args[BUFFERSIZE]) {
     }
 
     return 1;
-}
-
-void read_command2(char* args[BUFFERSIZE]) {
-    char buffer[BUFFERSIZE];
-    int c = 0;
-    int i = 0;
-    /* Read input from stdin */
-    fgets(buffer, BUFFERSIZE, stdin);
-    /* Tokenize it */
-    args[i] = strtok(buffer, " ");
-    while(args[i]) {
-        i++;
-        args[i] = strtok(NULL, " ");
-    }
-
-    /* Remove newline */
-    while(args[i-1][c] != 0) {
-        printf("%c", args[i-1][c]);
-	    c++;
-    }
-
-    args[i-1][c-1] = 0;
-    args[i] = 0;
-
-    return;
 }
 
 void timesubtract(struct timeval *a, struct timeval *b, struct timeval *res) {
@@ -331,6 +306,75 @@ void checkEnv(char ** args) {
     return;
 }
 
+int system_cd_prev(char * args[BUFFERSIZE]) {
+    if(args[1][0] == '-') {
+        if(args[1][1] == 0) {
+            if(prev_path != 0) {
+                strcpy(args[1], prev_path);
+            } else {
+                return 1;
+            }
+        } else {
+            fprintf(stderr, strerror(20));
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+void system_cd_home(char * args[BUFFERSIZE]) {
+    int lineLen;
+    int i;
+    char addedPath[BUFFERSIZE];
+    char * home;
+
+    if (args[1][0] == '~') {
+        if (args[1][1] == '/' || args[1][1] == 0) {
+            for(i = 0; i < sizeof(addedPath); i++) {
+                addedPath[i] = 0;
+            }
+            /* Home of user */
+            home = getenv("HOME");
+            lineLen = strlen(home);
+            for(i = 0; i < lineLen; i++) {
+                addedPath[i] = home[i];
+            }
+            addedPath[lineLen] = '/';
+            addedPath[lineLen+1] = 0;
+            if(args[1][1] == '/') {
+                for (i = 1; i < strlen(args[1]); i++) {
+                    addedPath[lineLen + i - 1] = args[1][i];
+                    if (args[1][i] == 0) break;
+                }
+                addedPath[lineLen + i] = 0;
+                addedPath[strlen(addedPath)] = 0;
+            }
+            args[1] = addedPath;
+        } else {
+            /* Home of someone else */
+        }
+    }
+
+    return;
+}
+
+void system_cd(char * args[BUFFERSIZE]) {
+    /* Perform expansion */
+    if(args[1] != 0) {
+        if(system_cd_prev(args)) return;
+        system_cd_home(args);
+    } else {
+        args[1] = getenv("HOME");
+    }
+
+    args[1][strlen(args[1])] = 0;
+    printf("Trying: %s\n", args[1]);
+    getcwd(prev_path, BUFFERSIZE);
+    if(chdir(args[1]) < 0) {
+        fprintf(stderr, "%s\n", strerror(errno));
+    }
+}
 
 /*
  * Function:    system_commands
@@ -343,16 +387,14 @@ void checkEnv(char ** args) {
 int system_commands(char* args[BUFFERSIZE]) {
     if (!strcmp("exit", args[0])) {
         /* fprintf(stderr, "exiting\n"); */
-        kill(getpid(), SIGTERM);
+        kill(0, SIGTERM);
         /* TODO: Waita på 0 tills det inte finns någon kvar att waita på */
 
         return 1;
     }
 
     if (!strcmp("cd", args[0])) {
-        /* fprintf(stderr, "changing directory\n");
-        fprintf(stderr, "to: %s\n", args[1]); */
-        chdir(args[1]);
+        system_cd(args);
         return 1;
     }
 
@@ -457,40 +499,3 @@ int main(void) {
 
 	return EXIT_SUCCESS;
 }
-
-
-
-/*
-void forker(char* buffer) {
-    pid_t childPid;
-    int childStatus;
-    int fileDescriptor[2];
-    char *const argvs;
-    char ** child_buffer;
-
-    pipe(fileDescriptor);
-
-    childStatus = 0;
-    childPid = fork();
-
-    if(childPid >= 0) {
-        if(childPid == 0) {
-            printf("Child.\n");
-            dup2(fileDescriptor[0], STDIN_FILENO);
-            read(fileDescriptor[0], &child_buffer, BUFFERSIZE);
-            close(fileDescriptor[0]);
-            execvp(child_buffer[0], child_buffer);
-        } else {
-            printf("Parent\n");
-            dup2(fileDescriptor[1], STDOUT_FILENO);
-            write(fileDescriptor[1], buffer, BUFFERSIZE);
-            close(fileDescriptor[1]);
-            waitpid(childPid, &childStatus, WUNTRACED|WCONTINUED);
-            printf("childstatus: %i\n", childStatus);
-        }
-    } else {
-        printf("Fork failed");
-    }
-    return;
-}*/
-
