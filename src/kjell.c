@@ -12,6 +12,7 @@
  TODO:       : Vi borde kolla på WIFEXITED och de där kommandona.
  ============================================================================
  */
+#define _XOPEN_SOURCE 500
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,11 +25,11 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <sys/time.h>  /* needed on some linux systems */
+#include <time.h> /* time() */
+#include <sys/time.h>  /* gettimeofday() */
 #include <sys/resource.h>
 #include <unistd.h>  /* needed on some linux systems */
 
-#define _XOPEN_SOURCE 500
 
 #define ANSI_GREEN "\x1b[0;32m"
 #define ANSI_RESET "\x1b[0;0m"
@@ -130,6 +131,7 @@ void read_command2(char* args[BUFFERSIZE]) {
     return;
 }
 
+
 /*
  * Function:    foreground_forker
  * -------------------
@@ -161,7 +163,7 @@ void foreground_forker(char* const* args) {
         gettimeofday(&time_end, NULL);
         timersub(&time_end, &time_begin, &time_spent);
 
-        printf("%lu.%05is user\t %lu.%05is system\t %lu.%05i total\n",
+        printf("%lu.%05lis user\t %lu.%05lis system\t %lu.%05li total\n",
                usage_spent.ru_utime.tv_sec, usage_spent.ru_utime.tv_usec,
                usage_spent.ru_stime.tv_sec, usage_spent.ru_stime.tv_usec,
                time_spent.tv_sec, time_spent.tv_usec);
