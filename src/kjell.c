@@ -18,17 +18,14 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <sys/wait.h> /* included to make the WUNTRACES stuff work */
-#include <sys/types.h> /* pid_t */
-#include <signal.h>
-#include <errno.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <fcntl.h>
 #include <time.h> /* time() */
 #include <sys/time.h>  /* gettimeofday() */
 #include <sys/resource.h>
-#include <unistd.h>  /* needed on some linux systems */
+#include <sys/types.h> /* pid_t */
+#include <sys/wait.h> /* included to make the WUNTRACES stuff work */
+#include <signal.h>
+#include <errno.h>
+#include <fcntl.h>
 
 
 #define ANSI_GREEN "\x1b[0;32m"
@@ -482,7 +479,7 @@ void sigchild_handler(int signo, siginfo_t* info, void * context) {
     /* Don't allow children to kill their parents */
     /* if(info->si_pid != getppid() && info->si_pid != getpid()) return; */
 
-    waitRet = wait4(0, &childStatus, WNOHANG, rus);
+    waitRet = wait4(0, &childStatus, WNOHANG, &rus);
     if(waitRet > 0) {
         printf("\nProcess [%i] finished\n", waitRet);
         printf("%lu.%05lis user\t %lu.%05lis system\n ",
@@ -550,7 +547,7 @@ void poll_background_process() {
     int waitRet;
     struct rusage rus;
 
-    waitRet = wait4(0, &childStatus, WNOHANG, rus);
+    waitRet = wait4(0, &childStatus, WNOHANG, &rus);
     while(waitRet > 0) {
         if (waitRet < 0) {
             if (errno == ECHILD) {
@@ -563,7 +560,7 @@ void poll_background_process() {
                    rus.ru_utime.tv_sec, rus.ru_utime.tv_usec,
                    rus.ru_stime.tv_sec, rus.ru_stime.tv_usec);
         }
-        waitRet = wait4(0, &childStatus, WNOHANG, rus);
+        waitRet = wait4(0, &childStatus, WNOHANG, &rus);
     }
 }
 
