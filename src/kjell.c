@@ -36,6 +36,8 @@
 #define BUFFERSIZE 80 /* */
 #define SIGDET 1
 
+pid_t wait4(pid_t pid, int *status, int options, struct rusage *rusage);
+
 static const char SHELL_NAME[] = "Kjell Shell";
 static char prev_path[BUFFERSIZE];
 
@@ -104,6 +106,31 @@ int read_command(char* args[BUFFERSIZE]) {
         return 0;
     }
 
+    return 1;
+}
+
+int read_command2(char* args[BUFFERSIZE]) {
+    char buffer[BUFFERSIZE];
+    int i = 0;
+
+    /* Read from STDIN to buffer */
+    if(fgets(buffer, BUFFERSIZE, stdin) == NULL) {
+        perror(NULL);
+    }
+    buffer[strlen(buffer) - 1] = 0;
+
+    args[0] = strtok(buffer, " ");
+    printf("%s\n", args[i]);
+    while(args[i] != NULL) {
+        i++;
+        args[i] = strtok(NULL, " ");
+        printf("%s\n", args[i]);
+    }
+
+    if(!strcmp(args[0], "")) {
+        return 0;
+    }
+    
     return 1;
 }
 
@@ -399,7 +426,6 @@ void system_cd(char * args[BUFFERSIZE]) {
         args[1] = getenv("HOME");
     }
 
-    args[1][strlen(args[1])] = 0;
     /* printf("Trying: %s\n", args[1]); */
     if(getcwd(prev_path, BUFFERSIZE) == NULL) {
         fprintf(stderr, "%s: could not get CWD %s\n", SHELL_NAME, strerror(errno));
@@ -525,7 +551,7 @@ int main(void) {
         }
 
         prompt();
-        if(read_command(args) == 0)
+        if(read_command2(args) == 0)
             continue;
 
         /* check if there are any system commands */
