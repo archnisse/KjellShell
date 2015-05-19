@@ -282,9 +282,11 @@ void checkEnv(char ** args) {
     if(pagerC == 0) {
         /*
          * TODO: Handle if it fails and retry with another pager
+         * Är denna aktuell?
          */
         pagerArg[0] = getenv("PAGER");
         if(!strcmp(pagerArg[0], "")) {
+            /* TODO: Det här är alltså jämförelsen mot null som getenv returnar om den går dåligt? I så fall är väl todon hanterad?*/
             pagerArg[0] = "less";
         }
         close(STDIN_FILENO);
