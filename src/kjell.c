@@ -292,6 +292,7 @@ void checkEnv(char ** args) {
         close(STDIN_FILENO);
         dup2(fd3[0], STDIN_FILENO);
         pipeCloser(fd1, fd2, fd3);
+        /* TODO: Hur vet vi om less var keff? */
         execvp(pagerArg[0], pagerArg);
     }
 
