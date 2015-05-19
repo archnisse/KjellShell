@@ -152,6 +152,7 @@ void background_forker(char* const* args) {
     if(childPid == 0) {
         childErrno = execvp(args[0], args);
 
+        /*Den här if-satsen är inte nödvändig va?*/
         if(childErrno == -1 && errno == 2) {
             printf("%s: command not found: %s\n", SHELL_NAME, prev_cmd);
         }
@@ -216,12 +217,7 @@ void checkEnv(char ** args) {
         args[0] = "grep";
         startGrep = 1;
     }
-    /*
-     * if(pipe(fileDescriptor) == -1) {
-        perror(NULL);
-        return;
-    }
-     */
+    /*fprintf(stderr, "woo checkenv\n");*/
     if (pipe(fd1) == -1) {
         fprintf(stderr, "Pipe failed\n");
         return;
@@ -234,7 +230,7 @@ void checkEnv(char ** args) {
         fprintf(stderr, "Pipe failed\n");
         return;
     }
-
+    /*fprintf(stderr, "wwo checkenv after pipes\n");*/
     printC = fork();
     if(printC > 0) sortC = fork();
     if(sortC > 0) pagerC = fork();
@@ -255,6 +251,7 @@ void checkEnv(char ** args) {
             dup2(fd2[1], STDOUT_FILENO);
         }
         pipeCloser(fd1, fd2, fd3);
+        fprintf(stderr, "printC kör\n");
         execvp(printEnvArg[0], printEnvArg);
     }
 
@@ -275,33 +272,42 @@ void checkEnv(char ** args) {
         dup2(fd2[0], STDIN_FILENO);
         dup2(fd3[1], STDOUT_FILENO);
         pipeCloser(fd1, fd2, fd3);
+        fprintf(stderr, "sortC kör\n");
         execvp(sortArg[0], sortArg);
     }
 
 
     if(pagerC == 0) {
-        /*
-         * TODO: Handle if it fails and retry with another pager
-         * Är denna aktuell?
-         */
-        pagerArg[0] = getenv("PAGER");
-        if(!strcmp(pagerArg[0], "")) {
-            /* TODO: Det här är alltså jämförelsen mot null som getenv returnar om den går dåligt? I så fall är väl todon hanterad?*/
-            pagerArg[0] = "less";
-        }
+        fprintf(stderr, "pagerC starts\n");
         close(STDIN_FILENO);
         dup2(fd3[0], STDIN_FILENO);
+        pagerArg[0] = getenv("PAGER");
+        if(!strcmp(pagerArg[0], "")) {
+            pagerArg[0] = "less";
+        }
+        fprintf(stderr, "pagerC has command");
         pipeCloser(fd1, fd2, fd3);
-        /* TODO: Hur vet vi om less var keff? */
+        fprintf(stderr, "pagerC kör\n");
+
+        execvp(pagerArg[0], pagerArg);
+        /* exec-functions only return if an error has occured, so lets try the different pager down here. */
+        if (!strcmp(pagerArg[0], "less")) {
+            /* Is equal to less */
+            pagerArg[0] = "more";
+        } else {
+            pagerArg[0] = "less";
+        }
         execvp(pagerArg[0], pagerArg);
     }
 
     if(printC > 0 && sortC > 0 && pagerC > 0 && grepC > 0) {
         pipeCloser(fd1, fd2, fd3);
+        fprintf(stderr, "parent väntar\n");
         waitpid(printC, &childStatus, 0);
         if(startGrep) waitpid(grepC, &childStatus, 0);
         waitpid(sortC, &childStatus, 0);
         waitpid(pagerC, &childStatus, 0);
+        fprintf(stderr, "parent väntat klart\n");
         sigrelse(SIGCHLD);
     }
 
