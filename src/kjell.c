@@ -216,10 +216,24 @@ void checkEnv(char ** args) {
         args[0] = "grep";
         startGrep = 1;
     }
-
-    pipe(fd1);
-    pipe(fd2);
-    pipe(fd3);
+    /*
+     * if(pipe(fileDescriptor) == -1) {
+        perror(NULL);
+        return;
+    }
+     */
+    if (pipe(fd1) == -1) {
+        fprintf(stderr, "Pipe failed\n");
+        return;
+    }
+    if (pipe(fd2) == -1) {
+        fprintf(stderr, "Pipe failed\n");
+        return;
+    }
+    if (pipe(fd3) == -1) {
+        fprintf(stderr, "Pipe failed\n");
+        return;
+    }
 
     printC = fork();
     if(printC > 0) sortC = fork();
