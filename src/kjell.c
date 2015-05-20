@@ -311,7 +311,7 @@ void checkEnv(char ** args) {
    
 
     if(printC == 0) {
-        close(STDOUT_FILENO);
+        if (close(STDOUT_FILENO) == -1) perror(NULL);
         /* We do this because if we are not using grep we want sort to read
          * directly from print */
         if(startGrep) {
@@ -327,8 +327,8 @@ void checkEnv(char ** args) {
 
     if(startGrep) {
         if(grepC == 0) {
-            close(STDIN_FILENO);
-            close(STDOUT_FILENO);
+            if (close(STDIN_FILENO) == -1) perror(NULL);
+            if (close(STDOUT_FILENO) == -1) perror(NULL);
             if(dup2(fd1[0], STDIN_FILENO) == -1)  { perror(NULL); pipeCloser(fd1, fd2, fd3); return; }
             if(dup2(fd2[1], STDOUT_FILENO) == -1) { perror(NULL); pipeCloser(fd1, fd2, fd3); return; }
             pipeCloser(fd1, fd2, fd3);
@@ -338,18 +338,19 @@ void checkEnv(char ** args) {
     }
 
     if(sortC == 0) {
-        close(STDIN_FILENO);
-        close(STDOUT_FILENO);
+        if (close(STDIN_FILENO) == -1) perror(NULL);
+        if (close(STDOUT_FILENO) == -1) perror(NULL);
         if(dup2(fd2[0], STDIN_FILENO) == -1) { perror(NULL); pipeCloser(fd1, fd2, fd3); return; }
         if(dup2(fd3[1], STDOUT_FILENO) == -1) { perror(NULL); pipeCloser(fd1, fd2, fd3); return; }
         pipeCloser(fd1, fd2, fd3);
         execvp(sortArg[0], sortArg);
-        perror("Could not run sort");
+        perror("Could not run sort\n");
+        return;
     }
 
 
     if(pagerC == 0) {
-        close(STDIN_FILENO);
+        if (close(STDIN_FILENO) == -1) perror(NULL);
         if(dup2(fd3[0], STDIN_FILENO) == -1) { perror(NULL); pipeCloser(fd1, fd2, fd3); return; }
         pagerArg[0] = getenv("PAGER");
         if(pagerArg[0] == '\0') {
@@ -366,6 +367,8 @@ void checkEnv(char ** args) {
             pagerArg[0] = "less";
         }
         execvp(pagerArg[0], pagerArg);
+        perror("Could not use the pager\n");
+        return;
     }
 
     if(printC > 0 && sortC > 0 && pagerC > 0 && grepC > 0) {
