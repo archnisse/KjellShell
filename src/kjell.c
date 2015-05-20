@@ -36,7 +36,7 @@
 
 #define TRUE 1
 #define BUFFERSIZE 80 /* */
-#define SIGDET 1
+#define SIGDET 0
 
 pid_t wait4(pid_t pid, int *status, int options, struct rusage *rusage);
 
@@ -44,7 +44,7 @@ static const char SHELL_NAME[] = "Kjell Shell";
 static char prev_path[BUFFERSIZE];
 static char prev_cmd[BUFFERSIZE];
 
-void poll_background_process();
+void poll_background_process(int);
 
 /*
  * Function:    read_command
@@ -336,22 +336,24 @@ int system_cd_prev(char * args[BUFFERSIZE]) {
 void system_cd_home(char * args[BUFFERSIZE], char addedPath[BUFFERSIZE]) {
     int lineLen;
     int i;
+    char* home;
     
     if (args[1][0] == '~') {
         if (args[1][1] == '/' || args[1][1] == 0) {
-
-            memset(addedPath, 0, BUFFERSIZE);
-
             /* Home of user */
-            addedPath = getenv("HOME");
+            home = getenv("HOME");
+            strcpy(addedPath, home);
+            /*Vi får en pekare från getenv, satteh vi dödar environment när vi skriver till den. Enkel fix iaf*/
             lineLen = strlen(addedPath);
-            addedPath[lineLen] = 0;
+            /*addedPath[lineLen] = 0;*/
             if(args[1][1] == '/') {
+
+                addedPath[lineLen] = '/';
                 for (i = 1; i < strlen(args[1]); i++) {
                     addedPath[lineLen + i - 1] = args[1][i];
                     if (args[1][i] == 0) break;
                 }
-                addedPath[lineLen + i] = 0;
+                addedPath[lineLen + i - 1] = 0;
                 addedPath[strlen(addedPath)] = 0;
             }
             args[1] = addedPath;
@@ -365,6 +367,8 @@ void system_cd_home(char * args[BUFFERSIZE], char addedPath[BUFFERSIZE]) {
 
 void system_cd(char * args[BUFFERSIZE]) {
     char addedPath[BUFFERSIZE];
+    memset(addedPath, 0, BUFFERSIZE);
+
     /* Perform expansion */
     if(args[1] != 0) {
         if(system_cd_prev(args)) return;
@@ -399,7 +403,7 @@ int internal_commands(char* args[BUFFERSIZE]) {
         kill(0, SIGQUIT);
 
         /* Clean up zombies */
-        poll_background_process();
+        poll_background_process(0);
 
         /* Start listening to SIGQUIT again with default handling */
         signal(SIGQUIT, SIG_DFL);
@@ -499,13 +503,12 @@ int main(void) {
 
     register_children_handlers();
 
-
     while(stdin_open()) {
         memset(args, 0, BUFFERSIZE);
         memset(buffer, 0, BUFFERSIZE);
 
         if(SIGDET != 1) {
-            poll_background_process();
+            poll_background_process(WNOHANG);
         }
 
         prompt();
@@ -527,12 +530,12 @@ int main(void) {
 	return EXIT_SUCCESS;
 }
 
-void poll_background_process() {
+void poll_background_process(int options) {
     int childStatus;
     int waitRet;
     struct rusage rus;
 
-    waitRet = wait4(0, &childStatus, WNOHANG, &rus);
+    waitRet = wait4(0, &childStatus, options, &rus);
     while(waitRet > 0) {
         if (waitRet < 0) {
             if (errno == ECHILD) {
@@ -544,8 +547,9 @@ void poll_background_process() {
             printf("%lu.%05lis user\t %lu.%05lis system\n ",
                    rus.ru_utime.tv_sec, rus.ru_utime.tv_usec,
                    rus.ru_stime.tv_sec, rus.ru_stime.tv_usec);
+            fflush(stdout);
         }
-        waitRet = wait4(0, &childStatus, WNOHANG, &rus);
+        waitRet = wait4(0, &childStatus, options, &rus);
     }
 }
 
