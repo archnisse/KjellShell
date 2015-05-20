@@ -647,7 +647,9 @@ int main(void) {
     char* args[BUFFERSIZE] = {0};
 
     /* Ignore the SIGQUIT signal for the shell process */
-    signal(SIGQUIT, SIG_IGN);
+    if (signal(SIGQUIT, SIG_IGN) == SIG_ERR) {
+        perror(NULL);
+    }
 
     register_signal_handlers();
 
