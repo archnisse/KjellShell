@@ -97,7 +97,7 @@ void timesubtract(struct timeval *a, struct timeval *b, struct timeval *res) {
  * -------------------
  * Forks a process that runs a command in the foreground.
  *
- * input: char* const* args containing in first position the commnand to execute
+ * input: char* const* args containing in first position the command to execute
  * and the rest as arguments
  * returns: void
  */
