@@ -35,7 +35,10 @@
 
 #define TRUE 1
 #define BUFFERSIZE 80 /* */
-#define SIGDET 1
+
+#ifndef SIGDET
+    #define SIGDET 0
+#endif
 
 pid_t wait4(pid_t pid, int *status, int options, struct rusage *rusage);
 
@@ -81,6 +84,12 @@ int read_command(char buffer[BUFFERSIZE], char* args[BUFFERSIZE]) {
     return 1;
 }
 
+/* Function:    timesubtract
+ * -------------------------
+ * A reimplementation for timersub to not have to define _BSD_SOURCE
+ * input: after timeval, before timeval and the timeval to store the difference.
+ * returns: void
+ */
 void timesubtract(struct timeval *a, struct timeval *b, struct timeval *res) {
     res->tv_sec = 0;
     res->tv_usec = 0;
@@ -94,7 +103,7 @@ void timesubtract(struct timeval *a, struct timeval *b, struct timeval *res) {
 
 /*
  * Function:    foreground_forker
- * -------------------
+ * ------------------------------
  * Forks a process that runs a command in the foreground.
  *
  * input: char* const* args containing in first position the command to execute
@@ -150,6 +159,13 @@ void foreground_forker(char* const* args) {
     }
 }
 
+/*
+ * Function:    background_forker
+ * ------------------------------
+ * Forks a process into the background and prints its pid.
+ * input: the argument list to the process
+ * returns: void
+ */
 void background_forker(char* const* args) {
     pid_t childPid;
     int childErrno;
@@ -164,11 +180,19 @@ void background_forker(char* const* args) {
         if(childErrno == -1 && errno == 2) {
             printf("%s: command not found: %s\n", SHELL_NAME, prev_cmd);
         }
+    } else if(childPid > 0) {
+        printf("Process [%i] started in the background\n", childPid);
     }
     return;
 }
 
-
+/*
+ * Function:    print_buffer
+ * -------------------------
+ * Prints a string array.
+ * input: the string array to be printed.
+ * returns: void
+ */
 void print_buffer(char ** args) {
     int i;
     for(i = 0; i < BUFFERSIZE; i++) {
@@ -181,7 +205,7 @@ void print_buffer(char ** args) {
 /*
  * Function:    prompt
  * -------------------
- * Prints the command line prompt
+ * Prints the command line prompt with username and current path.
  */
 void prompt() {
     char cwd[256];
@@ -209,6 +233,13 @@ void pipeCloser(int fd1[2], int fd2[2], int fd3[2]) {
     close(fd3[1]);
 }
 
+/*
+ * Function:    checkEnv
+ * ---------------------
+ * Paginates a sorted version of all environment variables in the system.
+ * input: the command and whether or not to grep for a particular variable.
+ * returns: void
+ */
 void checkEnv(char ** args) {
     char *printEnvArg[] = { "printenv", NULL };
     char *sortArg[] = { "sort", NULL };
@@ -225,7 +256,6 @@ void checkEnv(char ** args) {
         args[0] = "grep";
         startGrep = 1;
     }
-    /*fprintf(stderr, "woo checkenv\n");*/
     if (pipe(fd1) == -1) {
         fprintf(stderr, "Pipe failed\n");
         return;
@@ -238,7 +268,6 @@ void checkEnv(char ** args) {
         fprintf(stderr, "Pipe failed\n");
         return;
     }
-    /*fprintf(stderr, "wwo checkenv after pipes\n");*/
     printC = fork();
     if(printC > 0) sortC = fork();
     if(sortC > 0) pagerC = fork();
@@ -315,6 +344,14 @@ void checkEnv(char ** args) {
     return;
 }
 
+/*
+ * Function:    system_cd_prev
+ * ---------------------------
+ * Gets the previous path if necessary
+ * input: argument list
+ * returns: an int indicating whether or not there was a previous path
+ *          0 if there was, 1 if there was not.
+ */
 int system_cd_prev(char * args[BUFFERSIZE]) {
     if(args[1][0] == '-') {
         if(args[1][1] == 0) {
@@ -332,6 +369,14 @@ int system_cd_prev(char * args[BUFFERSIZE]) {
     return 0;
 }
 
+/*
+ * Function:    system_cd_home
+ * ---------------------------
+ * Checks if the user has entered a tilde in the beginning of the path to cd to.
+ * If so, stores the expanded path in the argument list.
+ * input: argument list and a buffer to store the expanded path.
+ * returns: void.
+ */
 void system_cd_home(char * args[BUFFERSIZE], char addedPath[BUFFERSIZE]) {
     int lineLen;
     int i;
@@ -364,6 +409,13 @@ void system_cd_home(char * args[BUFFERSIZE], char addedPath[BUFFERSIZE]) {
     return;
 }
 
+/*
+ * Function:    system_cd
+ * ----------------------
+ * Handles the cd command, and changes directory.
+ * input: argument list
+ * returns: void
+ */
 void system_cd(char * args[BUFFERSIZE]) {
     char addedPath[BUFFERSIZE];
     memset(addedPath, 0, BUFFERSIZE);
@@ -388,12 +440,12 @@ void system_cd(char * args[BUFFERSIZE]) {
 }
 
 /*
- * Function:    system_commands
+ * Function:    internal_commands
  * -------------------
  * Looks for system commands in the input
  *
  * input: char* args[buffersize] containing the user input
- * returns: 1 if it matched a system command (?), 0 if not
+ * returns: 1 if it matched a system command, 0 if not
  */
 int internal_commands(char* args[BUFFERSIZE]) {
     if (!strcmp("exit", args[0])) {
@@ -427,6 +479,14 @@ int internal_commands(char* args[BUFFERSIZE]) {
     return 0;
 }
 
+/*
+ * Function:    parse_background_process
+ * -------------------------------------
+ * Parses the argument list to see if an ampersand (&) was entered to see if
+ * the user wants a background process.
+ * input: the argument list
+ * returns: an int, 1 if an ampersand was entered, 0 otherwise.
+ */
 int parse_background_process(char** args) {
     int i;    
     /* Get last character of last word in args */
@@ -446,16 +506,27 @@ int parse_background_process(char** args) {
     return 0;
 }
 
+/*
+ * Function:    stdin_open
+ * -----------------------
+ * Checks whether or not stdin is open for reading.
+ * returns: 1 if it is open, 0 otherwise.
+ */
 int stdin_open() {
     return !feof(stdin);
 }
 
+/*
+ * Function:    sigchild_handler
+ * -----------------------------
+ * The SIGCHLD signal handler.
+ * input: signal number, signal info, and context
+ * returns: void
+ */
 void sigchild_handler(int signo, siginfo_t* info, void * context) {
     int childStatus;
     pid_t waitRet;
     struct rusage rus;
-    /* Don't allow children to kill their parents */
-    /* if(info->si_pid != getppid() && info->si_pid != getpid()) return; */
 
     waitRet = wait4(info->si_pid, &childStatus, WNOHANG, &rus);
     if(waitRet > 0) {
@@ -468,13 +539,27 @@ void sigchild_handler(int signo, siginfo_t* info, void * context) {
     }
 }
 
+/*
+ * Function:    sigint_handler
+ * ---------------------------
+ * Signal handler for the SIGINT signal.
+ * input: signal number, signal info, and context
+ * returns: void
+ */
 void sigint_handler(int signo, siginfo_t* info, void * context) {
 /*    printf("\n");
     prompt();
     fflush(stdout);*/
 }
 
-void register_children_handlers() {
+/*
+ * Function:    register_signal_handlers
+ * -------------------------------------
+ * Registers handlers for both of the SIGCHLD and SIGINT signals.
+ * input: void
+ * returns: void
+ */
+void register_signal_handlers() {
     struct sigaction sa_chld;
     struct sigaction sa_int;
 
@@ -493,14 +578,20 @@ void register_children_handlers() {
 
 }
 
+/*
+ * Function:    main
+ * -----------------
+ * The main function. Starts up the shell.
+ * returns: the exit status
+ */
 int main(void) {
     char buffer[BUFFERSIZE] = {0};
     char* args[BUFFERSIZE] = {0};
 
-    /* Ignore the SIGQUIT signal for this process */
+    /* Ignore the SIGQUIT signal for the shell process */
     signal(SIGQUIT, SIG_IGN);
 
-    register_children_handlers();
+    register_signal_handlers();
 
     while(stdin_open()) {
         memset(args, 0, BUFFERSIZE);
