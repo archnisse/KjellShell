@@ -20,14 +20,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <time.h> /* time() */
 #include <sys/time.h>  /* gettimeofday() */
-#include <sys/resource.h>
-#include <sys/types.h> /* pid_t */
-#include <sys/wait.h> /* included to make the WUNTRACES stuff work */
 #include <signal.h>
 #include <errno.h>
-#include <fcntl.h>
 
 #define ANSI_GREEN "\x1b[0;32m"
 #define ANSI_RESET "\x1b[0;0m"
@@ -250,7 +245,10 @@ void checkEnv(char ** args) {
     int childStatus;
     int startGrep = 0;
 
-    sighold(SIGCHLD);
+    if(sighold(SIGCHLD) == -1) {
+        perror(NULL);
+        return;
+    }
     if(args[1] != 0) {
         /* We have arguments */
         args[0] = "grep";
@@ -268,11 +266,16 @@ void checkEnv(char ** args) {
         fprintf(stderr, "Pipe failed\n");
         return;
     }
+
     printC = fork();
+    if(printC == -1) { perror(NULL); return; }
     if(printC > 0) sortC = fork();
+    if(sortC == -1) { perror(NULL); return; }
     if(sortC > 0) pagerC = fork();
+    if(pagerC == -1) { perror(NULL); return; }
     if(startGrep) {
         if(pagerC > 0) grepC = fork();
+        if(grepC == -1) { perror(NULL); return; }
     } else {
         grepC = 1;
     }
@@ -283,38 +286,42 @@ void checkEnv(char ** args) {
         /* We do this because if we are not using grep we want sort to read
          * directly from print */
         if(startGrep) {
-            dup2(fd1[1], STDOUT_FILENO);
+            if(dup2(fd1[1], STDOUT_FILENO) == -1) { perror(NULL); pipeCloser(fd1, fd2, fd3); return; }
         } else {
-            dup2(fd2[1], STDOUT_FILENO);
+            if(dup2(fd2[1], STDOUT_FILENO) == -1) { perror(NULL); pipeCloser(fd1, fd2, fd3); return; }
         }
         pipeCloser(fd1, fd2, fd3);
         execvp(printEnvArg[0], printEnvArg);
+        perror("Could not run printenv");
+        return;
     }
 
     if(startGrep) {
         if(grepC == 0) {
             close(STDIN_FILENO);
             close(STDOUT_FILENO);
-            dup2(fd1[0], STDIN_FILENO);
-            dup2(fd2[1], STDOUT_FILENO);
+            if(dup2(fd1[0], STDIN_FILENO) == -1)  { perror(NULL); pipeCloser(fd1, fd2, fd3); return; }
+            if(dup2(fd2[1], STDOUT_FILENO) == -1) { perror(NULL); pipeCloser(fd1, fd2, fd3); return; }
             pipeCloser(fd1, fd2, fd3);
             execvp(args[0], args);
+            perror("Could not run grep");
         }
     }
 
     if(sortC == 0) {
         close(STDIN_FILENO);
         close(STDOUT_FILENO);
-        dup2(fd2[0], STDIN_FILENO);
-        dup2(fd3[1], STDOUT_FILENO);
+        if(dup2(fd2[0], STDIN_FILENO) == -1) { perror(NULL); pipeCloser(fd1, fd2, fd3); return; }
+        if(dup2(fd3[1], STDOUT_FILENO) == -1) { perror(NULL); pipeCloser(fd1, fd2, fd3); return; }
         pipeCloser(fd1, fd2, fd3);
         execvp(sortArg[0], sortArg);
+        perror("Could not run sort");
     }
 
 
     if(pagerC == 0) {
         close(STDIN_FILENO);
-        dup2(fd3[0], STDIN_FILENO);
+        if(dup2(fd3[0], STDIN_FILENO) == -1) { perror(NULL); pipeCloser(fd1, fd2, fd3); return; }
         pagerArg[0] = getenv("PAGER");
         if(pagerArg[0] == '\0') {
             pagerArg[0] = "less";
@@ -338,7 +345,10 @@ void checkEnv(char ** args) {
         if(startGrep) waitpid(grepC, &childStatus, 0);
         waitpid(sortC, &childStatus, 0);
         waitpid(pagerC, &childStatus, 0);
-        sigrelse(SIGCHLD);
+        if(sigrelse(SIGCHLD) == -1) {
+            perror(NULL);
+            exit(EXIT_FAILURE);
+        }
     }
 
     return;
@@ -387,7 +397,6 @@ void system_cd_home(char * args[BUFFERSIZE], char addedPath[BUFFERSIZE]) {
             /* Home of user */
             home = getenv("HOME");
             strcpy(addedPath, home);
-            /*Vi får en pekare från getenv, satteh vi dödar environment när vi skriver till den. Enkel fix iaf*/
             lineLen = strlen(addedPath);
             /*addedPath[lineLen] = 0;*/
             if(args[1][1] == '/') {
@@ -403,6 +412,8 @@ void system_cd_home(char * args[BUFFERSIZE], char addedPath[BUFFERSIZE]) {
             args[1] = addedPath;
         } else {
             /* Home of someone else */
+            /* This does not need to be implemented
+             * since there are no others user on your system. */
         }
     }
 
@@ -451,7 +462,9 @@ int internal_commands(char* args[BUFFERSIZE]) {
     if (!strcmp("exit", args[0])) {
 
         /* Ask the other processes in the group to quit */
-        kill(0, SIGQUIT);
+        if(kill(0, SIGQUIT) == -1) {
+            perror(NULL);
+        }
 
         /* Clean up zombies */
         poll_background_process(0);
@@ -460,7 +473,9 @@ int internal_commands(char* args[BUFFERSIZE]) {
         signal(SIGQUIT, SIG_DFL);
 
         /* Kill itself */
-        kill(getpid(), SIGQUIT);
+        if(kill(getpid(), SIGQUIT) == -1) {
+            perror(NULL);
+        }
 
         return 1;
     }
@@ -535,7 +550,9 @@ void sigchild_handler(int signo, siginfo_t* info, void * context) {
                rus.ru_utime.tv_sec, rus.ru_utime.tv_usec,
                rus.ru_stime.tv_sec, rus.ru_stime.tv_usec);
         prompt();
-        fflush(stdout);
+        if(fflush(stdout) == -1) {
+            perror(NULL);
+        }
     }
 }
 
@@ -566,15 +583,27 @@ void register_signal_handlers() {
     if(SIGDET == 1) {
         /* Set up handler */
         sa_chld.sa_sigaction = &sigchild_handler;
-        sigemptyset(&sa_chld.sa_mask);
+        if(sigemptyset(&sa_chld.sa_mask) == -1) {
+            perror(NULL);
+            exit(EXIT_FAILURE);
+        }
         sa_chld.sa_flags = SA_RESTART | SA_SIGINFO;
-        sigaction(SIGCHLD, &sa_chld, 0);
+        if(sigaction(SIGCHLD, &sa_chld, 0) == -1) {
+            perror(NULL);
+            exit(EXIT_FAILURE);
+        }
     }
 
     sa_int.sa_sigaction = &sigint_handler;
-    sigemptyset(&sa_int.sa_mask);
+    if(sigemptyset(&sa_int.sa_mask) == -1) {
+        perror(NULL);
+        exit(EXIT_FAILURE);
+    }
     sa_int.sa_flags = SA_RESTART | SA_SIGINFO | SA_NOCLDWAIT;
-    sigaction(SIGINT, &sa_int, 0);
+    if(sigaction(SIGINT, &sa_int, 0) == -1) {
+        perror(NULL);
+        exit(EXIT_FAILURE);
+    }
 
 }
 
