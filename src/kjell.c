@@ -137,7 +137,7 @@ void foreground_forker(char* const* args) {
         childErrno = execvp(args[0], args);
 
         if(childErrno == -1 && errno == 2) {
-            fprintf(stderr, "%s: command not found: ", SHELL_NAME);
+            fprintf(stderr, "%s: command not found: %s\n", SHELL_NAME, prev_cmd);
             for(i = 0; i < BUFFERSIZE; i++) {
                 if(args[i] == 0) break;
                 fprintf(stderr, "%s ", args[i]);
