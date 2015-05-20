@@ -135,6 +135,7 @@ void foreground_forker(char* const* args) {
         }
         if (sigrelse(SIGCHLD) == -1) {
             perror(NULL);
+            exit(EXIT_FALIURE);
         }
 
         if (gettimeofday(&time_end, NULL) != 0) {
@@ -183,7 +184,9 @@ void background_forker(char* const* args) {
     childPid = fork();
     if(childPid == 0) {
         /* Start listening to SIGQUIT again with default handling */
-        signal(SIGQUIT, SIG_DFL);
+        if (signal(SIGQUIT, SIG_DFL) == SIG_ERR) {
+            perror(NULL);
+        }
 
         childErrno = execvp(args[0], args);
 
