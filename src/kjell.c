@@ -136,7 +136,7 @@ void foreground_forker(char* const* args) {
         }
         if (sigrelse(SIGCHLD) == -1) {
             perror(NULL);
-            exit(EXIT_FALIURE);
+            exit(EXIT_FAILURE);
         }
 
         if (gettimeofday(&time_end, NULL) != 0) {
