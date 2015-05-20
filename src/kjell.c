@@ -6,13 +6,12 @@
  Copyright   : 2015
  Description : Kjell Shell. A C linux Shell.
 
- TODO: * Check if fork went bad in checkEnv
-       * In checkEnv, check if PAGER variable is set then use that
-        * otherwise use less, if that does not work
-        * use more 
+
        * Check all commands if they fail (error return values and errno)
          * Give feedback
        * (Maybe use WIFEXITED etc)
+       * TODO: Try both more and less in pager after fail, if they have not been tested already
+       * TODO: testa kör med valgrid för att visa att inget läcker
  ============================================================================
  */
 #define _XOPEN_SOURCE 500
