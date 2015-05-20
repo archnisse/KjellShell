@@ -111,22 +111,30 @@ void foreground_forker(char* const* args) {
     struct rusage rus;
     struct timeval time_begin, time_end, time_spent;
 
-    gettimeofday(&time_begin, NULL);
+    if (gettimeofday(&time_begin, NULL) != 0) {
+        perror(NULL);
+    }
     if(pipe(fileDescriptor) == -1) {
         perror(NULL);
         return;
     }
 
-    sighold(SIGCHLD);
+    if (sighold(SIGCHLD) != 0) {
+        perror(NULL);
+    }
     childPid = fork();
 
     if(childPid > 0) {
         if (wait4(childPid, &childStatus, 0, &rus) <= 0) {
             fprintf(stderr, "Error waiting for child");
         }
-        sigrelse(SIGCHLD);
+        if (sigrelse(SIGCHLD) == -1) {
+            perror(NULL);
+        }
 
-        gettimeofday(&time_end, NULL);
+        if (gettimeofday(&time_end, NULL) != 0) {
+            perror(NULL);
+        }
         timesubtract(&time_end, &time_begin, &time_spent);
 
         printf("%lu.%05lis user\t %lu.%05lis system\t %lu.%05lis total\n",
@@ -136,7 +144,9 @@ void foreground_forker(char* const* args) {
 
     } else if(childPid == 0) {
         /* Start listening to SIGQUIT again with default handling */
-        signal(SIGQUIT, SIG_DFL);
+        if (signal(SIGQUIT, SIG_DFL) == SIG_ERR) {
+            perror(NULL);
+        }
 
         childErrno = execvp(args[0], args);
 
@@ -151,6 +161,7 @@ void foreground_forker(char* const* args) {
         }
     } else {
         printf("Couldn't fork");
+        perror(NULL);
     }
 }
 
@@ -177,6 +188,9 @@ void background_forker(char* const* args) {
         }
     } else if(childPid > 0) {
         printf("Process [%i] started in the background\n", childPid);
+    } else {
+        /*Fork failed*/
+        perror(NULL);
     }
     return;
 }
@@ -204,11 +218,17 @@ void print_buffer(char ** args) {
  */
 void prompt() {
     char cwd[256];
+    char *logname;
     if(getcwd(cwd, 256) == NULL) {
+        perror(NULL);
         cwd[0] = 'x';
     }
+    logname = getenv("LOGNAME");
+    if (logname == '\0') {
+        perror(NULL);
+    }
     printf("%s %s\xE2\x9E\xA1 %s%s %s",
-           getenv("LOGNAME"), ANSI_GREEN, ANSI_CYAN, cwd, ANSI_RESET);
+           logname, ANSI_GREEN, ANSI_CYAN, cwd, ANSI_RESET);
     return;
 }
 
@@ -220,12 +240,12 @@ void prompt() {
  *
  */
 void pipeCloser(int fd1[2], int fd2[2], int fd3[2]) {
-    close(fd1[0]);
-    close(fd1[1]);
-    close(fd2[0]);
-    close(fd2[1]);
-    close(fd3[0]);
-    close(fd3[1]);
+    if (close(fd1[0]) == -1) perror(NULL);
+    if (close(fd1[1]) == -1) perror(NULL);
+    if (close(fd2[0]) == -1) perror(NULL);
+    if (close(fd2[1]) == -1) perror(NULL);
+    if (close(fd3[0]) == -1) perror(NULL);
+    if (close(fd3[1]) == -1) perror(NULL);
 }
 
 /*
