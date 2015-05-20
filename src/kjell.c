@@ -140,8 +140,11 @@ void foreground_forker(char* const* args) {
         if(childErrno == -1 && errno == 2) {
             fprintf(stderr, "%s: command not found: ", SHELL_NAME);
             for(i = 0; i < BUFFERSIZE; i++) {
+                if(args[i] == 0) break;
                 fprintf(stderr, "%s ", args[i]);
             }
+            fprintf(stderr, "\n");
+            exit(-1);
         }
     } else {
         printf("Couldn't fork");
@@ -257,7 +260,6 @@ void checkEnv(char ** args) {
             dup2(fd2[1], STDOUT_FILENO);
         }
         pipeCloser(fd1, fd2, fd3);
-        fprintf(stderr, "printC kör\n");
         execvp(printEnvArg[0], printEnvArg);
     }
 
@@ -278,22 +280,18 @@ void checkEnv(char ** args) {
         dup2(fd2[0], STDIN_FILENO);
         dup2(fd3[1], STDOUT_FILENO);
         pipeCloser(fd1, fd2, fd3);
-        fprintf(stderr, "sortC kör\n");
         execvp(sortArg[0], sortArg);
     }
 
 
     if(pagerC == 0) {
-        fprintf(stderr, "pagerC starts\n");
         close(STDIN_FILENO);
         dup2(fd3[0], STDIN_FILENO);
         pagerArg[0] = getenv("PAGER");
         if(pagerArg[0] == '\0') {
             pagerArg[0] = "less";
         }
-        fprintf(stderr, "pagerC has command");
         pipeCloser(fd1, fd2, fd3);
-        fprintf(stderr, "pagerC kör\n");
 
         execvp(pagerArg[0], pagerArg);
         /* exec-functions only return if an error has occured, so lets try the different pager down here. */
@@ -308,12 +306,10 @@ void checkEnv(char ** args) {
 
     if(printC > 0 && sortC > 0 && pagerC > 0 && grepC > 0) {
         pipeCloser(fd1, fd2, fd3);
-        fprintf(stderr, "parent väntar\n");
         waitpid(printC, &childStatus, 0);
         if(startGrep) waitpid(grepC, &childStatus, 0);
         waitpid(sortC, &childStatus, 0);
         waitpid(pagerC, &childStatus, 0);
-        fprintf(stderr, "parent väntat klart\n");
         sigrelse(SIGCHLD);
     }
 
