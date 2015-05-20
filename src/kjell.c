@@ -331,26 +331,19 @@ int system_cd_prev(char * args[BUFFERSIZE]) {
     return 0;
 }
 
-void system_cd_home(char * args[BUFFERSIZE]) {
+void system_cd_home(char * args[BUFFERSIZE], char addedPath[BUFFERSIZE]) {
     int lineLen;
     int i;
-    char addedPath[BUFFERSIZE];
-    char * home;
-
+    
     if (args[1][0] == '~') {
         if (args[1][1] == '/' || args[1][1] == 0) {
-            for(i = 0; i < sizeof(addedPath); i++) {
-                addedPath[i] = 0;
-            }
+
+            memset(addedPath, 0, BUFFERSIZE);
 
             /* Home of user */
-            home = getenv("HOME");
-            lineLen = strlen(home);
-            for(i = 0; i < lineLen; i++) {
-                addedPath[i] = home[i];
-            }
-            addedPath[lineLen] = '/';
-            addedPath[lineLen+1] = 0;
+            addedPath = getenv("HOME");
+            lineLen = strlen(addedPath);
+            addedPath[lineLen] = 0;
             if(args[1][1] == '/') {
                 for (i = 1; i < strlen(args[1]); i++) {
                     addedPath[lineLen + i - 1] = args[1][i];
@@ -369,21 +362,24 @@ void system_cd_home(char * args[BUFFERSIZE]) {
 }
 
 void system_cd(char * args[BUFFERSIZE]) {
+    char addedPath[BUFFERSIZE];
     /* Perform expansion */
     if(args[1] != 0) {
         if(system_cd_prev(args)) return;
-        system_cd_home(args);
+        system_cd_home(args, addedPath);
     } else {
         args[1] = getenv("HOME");
     }
 
-    /* printf("Trying: %s\n", args[1]); */
     if(getcwd(prev_path, BUFFERSIZE) == NULL) {
         fprintf(stderr, "%s: could not get CWD %s\n", SHELL_NAME, strerror(errno));
     }
+
     if(chdir(args[1]) < 0) {
         fprintf(stderr, "%s\n", strerror(errno));
+
     }
+
 }
 
 /*
