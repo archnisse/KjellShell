@@ -132,6 +132,9 @@ void foreground_forker(char* const* args) {
                time_spent.tv_sec, time_spent.tv_usec);
 
     } else if(childPid == 0) {
+        /* Start listening to SIGQUIT again with default handling */
+        signal(SIGQUIT, SIG_DFL);
+
         childErrno = execvp(args[0], args);
 
         if(childErrno == -1 && errno == 2) {
@@ -150,6 +153,9 @@ void background_forker(char* const* args) {
     int childErrno;
     childPid = fork();
     if(childPid == 0) {
+        /* Start listening to SIGQUIT again with default handling */
+        signal(SIGQUIT, SIG_DFL);
+
         childErrno = execvp(args[0], args);
 
         /*Den här if-satsen är inte nödvändig va?*/
@@ -392,8 +398,6 @@ void system_cd(char * args[BUFFERSIZE]) {
  */
 int internal_commands(char* args[BUFFERSIZE]) {
     if (!strcmp("exit", args[0])) {
-        /* Ignore the SIGQUIT signal for this process */
-        signal(SIGQUIT, SIG_IGN);
 
         /* Ask the other processes in the group to quit */
         kill(0, SIGQUIT);
@@ -493,6 +497,9 @@ void register_children_handlers() {
 int main(void) {
     char buffer[BUFFERSIZE] = {0};
     char* args[BUFFERSIZE] = {0};
+
+    /* Ignore the SIGQUIT signal for this process */
+    signal(SIGQUIT, SIG_IGN);
 
     register_children_handlers();
 
