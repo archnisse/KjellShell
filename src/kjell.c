@@ -35,7 +35,7 @@
 
 #define TRUE 1
 #define BUFFERSIZE 80 /* */
-#define SIGDET 0
+#define SIGDET 1
 
 pid_t wait4(pid_t pid, int *status, int options, struct rusage *rusage);
 
@@ -457,7 +457,7 @@ void sigchild_handler(int signo, siginfo_t* info, void * context) {
     /* Don't allow children to kill their parents */
     /* if(info->si_pid != getppid() && info->si_pid != getpid()) return; */
 
-    waitRet = wait4(0, &childStatus, WNOHANG, &rus);
+    waitRet = wait4(info->si_pid, &childStatus, WNOHANG, &rus);
     if(waitRet > 0) {
         printf("\nProcess [%i] finished\n", waitRet);
         printf("%lu.%05lis user\t %lu.%05lis system\n ",
