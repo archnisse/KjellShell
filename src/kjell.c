@@ -16,13 +16,19 @@
  */
 #define _XOPEN_SOURCE 500
 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <time.h> /* time() */
 #include <sys/time.h>  /* gettimeofday() */
+#include <sys/resource.h>
+#include <sys/types.h> /* pid_t */
+#include <sys/wait.h> /* included to make the WUNTRACES stuff work */
 #include <signal.h>
 #include <errno.h>
+#include <fcntl.h>
 
 #define ANSI_GREEN "\x1b[0;32m"
 #define ANSI_RESET "\x1b[0;0m"
