@@ -282,7 +282,7 @@ void checkEnv(char ** args) {
         close(STDIN_FILENO);
         dup2(fd3[0], STDIN_FILENO);
         pagerArg[0] = getenv("PAGER");
-        if(!strcmp(pagerArg[0], "")) {
+        if(pagerArg[0] == '\0') {
             pagerArg[0] = "less";
         }
         fprintf(stderr, "pagerC has command");
