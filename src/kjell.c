@@ -1,18 +1,12 @@
 /*
- ============================================================================
+ ========================================================================
  Name        : Kjell.c
  Author      : Viktor Björkholm & Jesper Bränn
  Version     : 0.112
  Copyright   : 2015
  Description : Kjell Shell. A C linux Shell.
 
-
-       * Check all commands if they fail (error return values and errno)
-         * Give feedback
-       * (Maybe use WIFEXITED etc)
-       * TODO: Try both more and less in pager after fail, if they have not been tested already
-       * TODO: testa kör med valgrid för att visa att inget läcker
- ============================================================================
+ ========================================================================
  */
 #define _XOPEN_SOURCE 500
 
@@ -428,6 +422,9 @@ void system_cd_home(char * args[BUFFERSIZE], char addedPath[BUFFERSIZE]) {
         if (args[1][1] == '/' || args[1][1] == 0) {
             /* Home of user */
             home = getenv("HOME");
+            if (home == NULL) {
+                home = ".";
+            }
             strcpy(addedPath, home);
             lineLen = strlen(addedPath);
             /*addedPath[lineLen] = 0;*/
